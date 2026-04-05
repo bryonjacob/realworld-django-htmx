@@ -1,6 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
+from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from taggit.models import Tag
@@ -15,23 +18,33 @@ User = get_user_model()
 ARTICLES_PER_PAGE = 10
 
 
+def _feed_queryset(
+    user: AbstractBaseUser | AnonymousUser,
+    feed: str | None,
+    tag: str | None,
+) -> tuple[QuerySet | None, str]:
+    """Build article queryset for the requested feed.
+
+    Returns (queryset, active_tab). queryset is None when an anonymous user
+    requested the 'following' feed — the caller should redirect to login.
+    """
+    queryset = Article.objects.with_favorites(user)
+    if feed == "following":
+        if not user.is_authenticated:
+            return None, "following"
+        followed_authors = User.objects.filter(followers=user)
+        return queryset.filter(author__in=followed_authors), "following"
+    if tag:
+        return queryset.filter(tags__name=tag), "tag"
+    return queryset, "global"
+
+
 def _build_feed(request, tag=None):
     """Shared logic for home and tag views."""
     feed = request.GET.get("feed")
-
-    queryset = Article.objects.with_favorites(request.user)
-
-    if feed == "following" and not request.user.is_authenticated:
+    queryset, active_tab = _feed_queryset(request.user, feed, tag)
+    if queryset is None:
         return redirect("login")
-    if feed == "following" and request.user.is_authenticated:
-        followed_authors = User.objects.filter(followers=request.user)
-        queryset = queryset.filter(author__in=followed_authors)
-        active_tab = "following"
-    elif tag:
-        queryset = queryset.filter(tags__name=tag)
-        active_tab = "tag"
-    else:
-        active_tab = "global"
 
     queryset = queryset.select_related("author").prefetch_related("tags").order_by("-created")
     page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
