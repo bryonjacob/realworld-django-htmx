@@ -5,13 +5,12 @@ from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from accounts.constants import PROFILE_ARTICLES_PER_PAGE
 from accounts.forms import LoginForm, RegisterForm, SettingsForm
 from accounts.models import User
 from helpers.exceptions import clean_integrity_error
 from helpers.htmx import is_htmx
 from helpers.pagination import paginate
-
-ARTICLES_PER_PAGE = 10
 
 
 def login_view(request):
@@ -92,7 +91,7 @@ def _profile_view(request, username, *, tab):
     else:
         queryset = queryset.filter(author=profile_user)
     queryset = queryset.order_by("-created")
-    page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
+    page_result = paginate(queryset, request, per_page=PROFILE_ARTICLES_PER_PAGE)
 
     return render(
         request,
