@@ -8,14 +8,17 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from taggit.models import Tag
 
+from articles.constants import (
+    ALL_TAGS_CACHE_KEY,
+    ALL_TAGS_CACHE_TTL_SECONDS,
+    ARTICLES_PER_PAGE,
+)
 from articles.forms import ArticleForm
 from articles.models import Article
 from helpers.htmx import is_htmx
 from helpers.pagination import paginate
 
 User = get_user_model()
-
-ARTICLES_PER_PAGE = 10
 
 
 def _feed_queryset(
@@ -49,7 +52,7 @@ def _build_feed(request, tag=None):
     queryset = queryset.select_related("author").prefetch_related("tags").order_by("-created")
     page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
 
-    tags = cache.get_or_set("all_tags", Tag.objects.all, timeout=300)
+    tags = cache.get_or_set(ALL_TAGS_CACHE_KEY, Tag.objects.all, timeout=ALL_TAGS_CACHE_TTL_SECONDS)
 
     context = {
         "articles": page_result.items,
@@ -110,7 +113,7 @@ def _save_article_form(form, article):
             tag_name = tag_name.strip()
             if tag_name:
                 article.tags.add(tag_name)
-    cache.delete("all_tags")
+    cache.delete(ALL_TAGS_CACHE_KEY)
 
 
 @login_required
