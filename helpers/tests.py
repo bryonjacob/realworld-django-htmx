@@ -41,6 +41,12 @@ class CleanIntegrityErrorTest(PlainTestCase):
         error.__cause__ = None
         self.assertIsNone(clean_integrity_error(error))
 
+    def test_returns_none_for_unknown_cause_type(self):
+        """Non-None cause that matches neither SQLite nor psycopg2 branches."""
+        error = IntegrityError()
+        error.__cause__ = ValueError("something else entirely")
+        self.assertIsNone(clean_integrity_error(error))
+
     def test_returns_none_for_malformed_sqlite_message(self):
         cause = SQLiteIntegrityError("something unexpected")
         error = IntegrityError()
