@@ -170,6 +170,35 @@ class HomeViewTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("partials/feed_content.html", [t.name for t in resp.templates if t.name])
 
+    def test_drafts_hidden_from_global_feed(self):
+        make_article(self.alice, title="Draft One")
+        Article.objects.filter(title="Draft One").update(is_published=False)
+        resp = self.client.get(reverse("home"))
+        self.assertNotContains(resp, "Draft One")
+
+    def test_drafts_hidden_from_global_feed_for_author(self):
+        cache.clear()
+        make_article(self.alice, title="My Draft")
+        Article.objects.filter(title="My Draft").update(is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("home"))
+        self.assertNotContains(resp, "My Draft")
+
+    def test_drafts_hidden_from_tag_feed(self):
+        make_article(self.alice, title="Draft Tag", tags=["secret"])
+        Article.objects.filter(title="Draft Tag").update(is_published=False)
+        resp = self.client.get(reverse("tag", args=["secret"]))
+        self.assertNotContains(resp, "Draft Tag")
+
+    def test_tag_cache_excludes_draft_only_tags(self):
+        cache.clear()
+        a = make_article(self.alice, title="Only Draft", tags=["drafty"])
+        Article.objects.filter(pk=a.pk).update(is_published=False)
+        resp = self.client.get(reverse("home"))
+        tag_names = [t.name for t in resp.context["tags"]]
+        self.assertNotIn("drafty", tag_names)
+        self.assertIn("python", tag_names)
+
 
 class ArticleDetailViewTest(TestCase):
     def setUp(self):
@@ -191,6 +220,24 @@ class ArticleDetailViewTest(TestCase):
         self.client.force_login(self.bob)
         resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
         self.assertTrue(resp.context["is_following"])
+
+    def test_draft_detail_404_for_anonymous(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_draft_detail_404_for_other_user(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        self.client.force_login(self.bob)
+        resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_draft_detail_visible_to_author(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Detail Me")
 
 
 class ArticleCreateViewTest(TestCase):
@@ -320,6 +367,12 @@ class ArticleFavoriteViewTest(TestCase):
     def test_unknown_slug_404(self):
         self.client.force_login(self.bob)
         resp = self.client.post(reverse("article_favorite", args=["ghost"]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_cannot_favorite_a_draft(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        self.client.force_login(self.bob)
+        resp = self.client.post(reverse("article_favorite", args=[self.article.slug]))
         self.assertEqual(resp.status_code, 404)
 
 

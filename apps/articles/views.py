@@ -30,8 +30,11 @@ def _feed_queryset(
 
     Returns (queryset, active_tab). queryset is None when an anonymous user
     requested the 'following' feed — the caller should redirect to login.
+
+    Feeds never include drafts — even the author's own. Drafts live only
+    on the drafts tab of the author's profile.
     """
-    queryset = Article.objects.with_favorites(user)
+    queryset = Article.objects.with_favorites(user).filter(is_published=True)
     if feed == "following":
         if not user.is_authenticated:
             return None, "following"
@@ -49,10 +52,13 @@ def _build_feed(request, tag=None):
     if queryset is None:
         return redirect("login")
 
-    queryset = queryset.select_related("author").prefetch_related("tags").order_by("-created")
+    queryset = queryset.select_related("author").prefetch_related("tags").order_by("-published_at")
     page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
 
-    tags = cache.get_or_set(ALL_TAGS_CACHE_KEY, Tag.objects.all, timeout=ALL_TAGS_CACHE_TTL_SECONDS)
+    def _published_tags():
+        return list(Tag.objects.filter(article__is_published=True).distinct())
+
+    tags = cache.get_or_set(ALL_TAGS_CACHE_KEY, _published_tags, timeout=ALL_TAGS_CACHE_TTL_SECONDS)
 
     context = {
         "articles": page_result.items,
@@ -91,12 +97,17 @@ def profile_view(request, username, tab):
 
     is_self = request.user == profile_user
     is_following = request.user.is_authenticated and request.user.is_following(profile_user)
-    queryset = Article.objects.with_favorites(request.user).select_related("author").prefetch_related("tags")
+    queryset = (
+        Article.objects.with_favorites(request.user)
+        .filter(is_published=True)
+        .select_related("author")
+        .prefetch_related("tags")
+    )
     if tab == "favorites":
         queryset = queryset.filter(favorites=profile_user)
     else:
         queryset = queryset.filter(author=profile_user)
-    queryset = queryset.order_by("-created")
+    queryset = queryset.order_by("-published_at")
     page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
 
     return render(
@@ -118,6 +129,7 @@ def article_detail_view(request, slug):
     try:
         article = (
             Article.objects.with_favorites(request.user)
+            .visible_to(request.user)
             .select_related("author")
             .prefetch_related("tags")
             .get(slug=slug)
@@ -197,7 +209,7 @@ def article_delete_view(request, slug):
 @login_required
 @require_POST
 def article_favorite_view(request, slug):
-    article = get_object_or_404(Article, slug=slug)
+    article = get_object_or_404(Article.objects.visible_to(request.user), slug=slug, is_published=True)
     if article.favorites.filter(id=request.user.id).exists():
         article.favorites.remove(request.user)
     else:

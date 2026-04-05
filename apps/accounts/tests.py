@@ -233,6 +233,26 @@ class ProfileViewTest(TestCase):
         resp = self.client.get(reverse("profile", args=["alice"]) + "?page=bogus")
         self.assertEqual(resp.status_code, 200)
 
+    def test_profile_my_articles_hides_drafts_from_owner(self):
+        Article.objects.create(author=self.alice, title="Alice Draft", summary="", content="", is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("profile", args=["alice"]))
+        self.assertContains(resp, "Alice Post")
+        self.assertNotContains(resp, "Alice Draft")
+
+    def test_profile_my_articles_hides_drafts_from_others(self):
+        Article.objects.create(author=self.alice, title="Alice Draft", summary="", content="", is_published=False)
+        resp = self.client.get(reverse("profile", args=["alice"]))
+        self.assertNotContains(resp, "Alice Draft")
+
+    def test_profile_favorites_hides_drafts(self):
+        draft = Article.objects.create(
+            author=self.alice, title="Alice Draft", summary="", content="", is_published=False
+        )
+        draft.favorites.add(self.bob)
+        resp = self.client.get(reverse("profile_favorites", args=["bob"]))
+        self.assertNotContains(resp, "Alice Draft")
+
     def test_profile_self_view_sets_is_self(self):
         self.client.force_login(self.alice)
         resp = self.client.get(reverse("profile", args=["alice"]))
