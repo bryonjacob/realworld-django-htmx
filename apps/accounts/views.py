@@ -1,17 +1,16 @@
 from articles.models import Article
-from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.forms import LoginForm, RegisterForm, SettingsForm
+from accounts.models import User
 from helpers.exceptions import clean_integrity_error
 from helpers.htmx import is_htmx
 
 ARTICLES_PER_PAGE = 10
-
-User = get_user_model()
 
 
 def login_view(request):

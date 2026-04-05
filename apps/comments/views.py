@@ -16,7 +16,7 @@ def comment_create_view(request, slug):
     if body:
         Comment.objects.create(article=article, author=request.user, content=body)
     if is_htmx(request):
-        comments = article.comment_set.select_related("author").order_by("-created")
+        comments = Comment.objects.filter(article=article).select_related("author").order_by("-created")
         return render(request, "partials/comment_list.html", {"comments": comments, "article": article})
     return redirect("article_detail", slug=slug)
 
@@ -30,6 +30,6 @@ def comment_delete_view(request, slug, comment_id):
         return HttpResponseForbidden()
     comment.delete()
     if is_htmx(request):
-        comments = article.comment_set.select_related("author").order_by("-created")
+        comments = Comment.objects.filter(article=article).select_related("author").order_by("-created")
         return render(request, "partials/comment_list.html", {"comments": comments, "article": article})
     return redirect("article_detail", slug=slug)

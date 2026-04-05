@@ -51,4 +51,4 @@ class User(AbstractUser):
         return self.username
 
     def is_following(self, other_user: User) -> bool:
-        return other_user.followers.filter(pk=self.id).exists() if self.is_authenticated else False
+        return other_user.followers.filter(pk=self.pk).exists() if self.is_authenticated else False

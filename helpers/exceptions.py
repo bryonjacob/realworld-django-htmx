@@ -5,9 +5,11 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 try:
-    from psycopg2.errors import UniqueViolation
+    from psycopg2.errors import UniqueViolation as _UniqueViolation
+
+    UniqueViolation: type[Exception] | None = _UniqueViolation
 except ImportError:
-    UniqueViolation = None  # type: ignore[assignment, misc]
+    UniqueViolation = None
 
 
 class ResourceNotFound(Http404):

@@ -1,14 +1,15 @@
 """Unit tests for accounts app — views, models, forms."""
 
+from typing import cast
 from unittest.mock import PropertyMock, patch
 
 from articles.models import Article
-from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.http import HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 
-User = get_user_model()
+from accounts.models import User
 
 
 def make_user(email="alice@example.com", username="alice", password="pw123456", **extra):
@@ -136,7 +137,7 @@ class SettingsViewTest(TestCase):
     def test_anonymous_redirects_to_login(self):
         resp = self.client.get(reverse("settings"))
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("login", resp.url)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
 
     def test_get_authenticated_renders_form(self):
         user = make_user()
@@ -253,7 +254,7 @@ class FollowViewTest(TestCase):
     def test_anonymous_redirects(self):
         resp = self.client.post(reverse("follow", args=["alice"]))
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("login", resp.url)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
 
     def test_follow_then_unfollow(self):
         self.client.force_login(self.bob)

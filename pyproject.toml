@@ -31,6 +31,7 @@ dependencies = [
 dev = [
     "ty==0.0.29",
     "ruff==0.5.1",
+    "django-types>=0.20.0",
 ]
 
 [tool.setuptools]
@@ -85,6 +86,3 @@ ignore = [
 
 [tool.ty.rules]
 unresolved-import = "ignore"  # ty can't follow Django's sys.path manipulation for the apps/ directory
-unresolved-attribute = "warn"  # schemas define fields from Meta — warn rather than error
-possibly-missing-attribute = "warn"  # Django QuerySet false positives — warn rather than error
-invalid-return-type = "warn"  # Django model field descriptors (CharField → str) — warn rather than error
