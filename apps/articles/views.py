@@ -230,6 +230,26 @@ def article_delete_view(request, slug):
 
 @login_required
 @require_POST
+def article_publish_view(request, slug):
+    """Toggle an article's published state. Author-only.
+
+    Body param 'action' is 'publish' or 'unpublish'. Publishing stamps
+    published_at the first time (handled in Article.save). Unpublishing
+    leaves comments and favorites intact — they just become invisible
+    until the article is republished.
+    """
+    article = get_object_or_404(Article, slug=slug, author=request.user)
+    action = request.POST.get("action")
+    if action == "unpublish":
+        article.is_published = False
+    else:
+        article.is_published = True
+    article.save()
+    return redirect("article_detail", slug=article.slug)
+
+
+@login_required
+@require_POST
 def article_favorite_view(request, slug):
     article = get_object_or_404(Article.objects.visible_to(request.user), slug=slug, is_published=True)
     if article.favorites.filter(id=request.user.id).exists():

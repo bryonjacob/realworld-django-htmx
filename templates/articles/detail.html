@@ -4,6 +4,13 @@
 
 {% block content %}
 <div class="article-page">
+  {% if not article.is_published %}
+  <div class="draft-banner" style="background-color: #fff8dc; border-bottom: 1px solid #e0d68a; padding: 0.75rem 0; text-align: center; color: #7a6a00;">
+    <div class="container">
+      <strong>Draft</strong> — only you can see this.
+    </div>
+  </div>
+  {% endif %}
   <div class="banner">
     <div class="container">
       <h1>{{ article.title }}</h1>
@@ -32,6 +39,7 @@
       {% include "partials/article_meta.html" %}
     </div>
 
+    {% if article.is_published %}
     <div class="row">
       <div class="col-xs-12 col-md-8 offset-md-2">
         <div id="comments-section">
@@ -61,6 +69,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

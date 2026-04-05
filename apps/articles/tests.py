@@ -453,6 +453,59 @@ class ArticleFavoriteViewTest(TestCase):
         self.assertEqual(resp.status_code, 404)
 
 
+class ArticlePublishViewTest(TestCase):
+    def setUp(self):
+        self.alice = make_user()
+        self.bob = make_user(email="bob@x.com", username="bob")
+        self.article = make_article(self.alice, title="Toggle Me")
+
+    def test_anonymous_redirects(self):
+        resp = self.client.post(reverse("article_publish", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
+
+    def test_non_author_gets_404(self):
+        self.client.force_login(self.bob)
+        resp = self.client.post(reverse("article_publish", args=[self.article.slug]), {"action": "unpublish"})
+        self.assertEqual(resp.status_code, 404)
+
+    def test_author_unpublishes_published_article(self):
+        self.client.force_login(self.alice)
+        resp = self.client.post(reverse("article_publish", args=[self.article.slug]), {"action": "unpublish"})
+        self.assertRedirects(resp, reverse("article_detail", args=[self.article.slug]))
+        self.article.refresh_from_db()
+        self.assertFalse(self.article.is_published)
+
+    def test_author_publishes_draft_and_stamps_published_at(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False, published_at=None)
+        self.client.force_login(self.alice)
+        resp = self.client.post(reverse("article_publish", args=[self.article.slug]), {"action": "publish"})
+        self.assertRedirects(resp, reverse("article_detail", args=[self.article.slug]))
+        self.article.refresh_from_db()
+        self.assertTrue(self.article.is_published)
+        self.assertIsNotNone(self.article.published_at)
+
+    def test_unpublish_preserves_comments_and_favorites(self):
+        from comments.models import Comment
+
+        self.article.favorites.add(self.bob)
+        Comment.objects.create(article=self.article, author=self.bob, content="nice post")
+        self.client.force_login(self.alice)
+        self.client.post(reverse("article_publish", args=[self.article.slug]), {"action": "unpublish"})
+        self.article.refresh_from_db()
+        self.assertEqual(self.article.favorites.count(), 1)
+        self.assertEqual(self.article.comment_set.count(), 1)
+
+    def test_draft_detail_hides_comments_and_shows_banner(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "only you can see this")
+        self.assertNotContains(resp, 'name="body"')  # comment textarea hidden
+        self.assertContains(resp, "Publish Article")  # publish button visible
+
+
 class SeedDataCommandTest(TestCase):
     def test_seed_data_creates_users_and_articles(self):
         out = StringIO()
