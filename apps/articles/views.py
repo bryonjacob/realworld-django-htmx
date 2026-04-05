@@ -97,18 +97,22 @@ def profile_view(request, username, tab):
 
     is_self = request.user == profile_user
     is_following = request.user.is_authenticated and request.user.is_following(profile_user)
-    queryset = (
-        Article.objects.with_favorites(request.user)
-        .filter(is_published=True)
-        .select_related("author")
-        .prefetch_related("tags")
-    )
-    if tab == "favorites":
-        queryset = queryset.filter(favorites=profile_user)
+
+    # The drafts tab is strictly owner-only. 404 for anyone else so the
+    # URL can't be used to probe whether a given user has drafts.
+    if tab == "drafts" and not is_self:
+        return render(request, "accounts/profile_404.html", {"username": username}, status=404)
+
+    queryset = Article.objects.with_favorites(request.user).select_related("author").prefetch_related("tags")
+    if tab == "drafts":
+        queryset = queryset.filter(author=profile_user, is_published=False).order_by("-updated")
+    elif tab == "favorites":
+        queryset = queryset.filter(favorites=profile_user, is_published=True).order_by("-published_at")
     else:
-        queryset = queryset.filter(author=profile_user)
-    queryset = queryset.order_by("-published_at")
+        queryset = queryset.filter(author=profile_user, is_published=True).order_by("-published_at")
     page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
+
+    drafts_count = Article.objects.filter(author=profile_user, is_published=False).count() if is_self else 0
 
     return render(
         request,
@@ -121,6 +125,7 @@ def profile_view(request, username, tab):
             "tab": tab,
             "page": page_result.page,
             "pages": page_result.pages,
+            "drafts_count": drafts_count,
         },
     )
 

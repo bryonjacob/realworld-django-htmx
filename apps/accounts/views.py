@@ -83,6 +83,10 @@ def profile_favorites_view(request, username):
     return _profile_view(request, username, tab="favorites")
 
 
+def profile_drafts_view(request, username):
+    return _profile_view(request, username, tab="drafts")
+
+
 @login_required
 @require_POST
 def follow_view(request, username):
