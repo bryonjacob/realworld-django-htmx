@@ -8,6 +8,7 @@ from taggit.models import Tag
 from articles.forms import ArticleForm
 from articles.models import Article
 from helpers.htmx import is_htmx
+from helpers.pagination import paginate
 
 User = get_user_model()
 
@@ -17,11 +18,6 @@ ARTICLES_PER_PAGE = 10
 def _build_feed(request, tag=None):
     """Shared logic for home and tag views."""
     feed = request.GET.get("feed")
-    try:
-        page = int(request.GET.get("page", 1))
-    except (ValueError, TypeError):
-        page = 1
-    offset = (page - 1) * ARTICLES_PER_PAGE
 
     queryset = Article.objects.with_favorites(request.user)
 
@@ -38,20 +34,17 @@ def _build_feed(request, tag=None):
         active_tab = "global"
 
     queryset = queryset.select_related("author").prefetch_related("tags").order_by("-created")
-    total = queryset.count()
-    articles = list(queryset[offset : offset + ARTICLES_PER_PAGE])
-    total_pages = (total + ARTICLES_PER_PAGE - 1) // ARTICLES_PER_PAGE
-    pages = range(1, total_pages + 1)
+    page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
 
     tags = cache.get_or_set("all_tags", Tag.objects.all, timeout=300)
 
     context = {
-        "articles": articles,
+        "articles": page_result.items,
         "tags": tags,
         "active_tab": active_tab,
         "active_tag": tag,
-        "page": page,
-        "pages": pages,
+        "page": page_result.page,
+        "pages": page_result.pages,
     }
 
     if is_htmx(request):
