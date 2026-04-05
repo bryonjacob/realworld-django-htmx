@@ -7,7 +7,7 @@
     </a>
     <div class="info">
       <a href="{% url 'profile' username=article.author.username %}" class="author">{{ article.author.username }}</a>
-      <span class="date">{{ article.created|date:"F j, Y" }}</span>
+      <span class="date">{{ article.published_at|default:article.created|date:"F j, Y" }}</span>
     </div>
     {% include "partials/favorite_button.html" %}
   </div>
