@@ -19,6 +19,7 @@ from helpers import exceptions as exceptions_module
 from helpers.context_processors import conduit_context
 from helpers.exceptions import ResourceNotFound, clean_integrity_error, get_or_404
 from helpers.htmx import is_htmx
+from helpers.pagination import paginate
 
 User = get_user_model()
 
@@ -145,3 +146,57 @@ class ConduitContextTest(PlainTestCase):
         ctx = conduit_context(request)
         self.assertIn('"bio": null', ctx["conduit_user_json"])
         self.assertIn('"image": null', ctx["conduit_user_json"])
+
+
+class PaginateTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        author = User.objects.create_user(email="p@b.com", username="paginator", password="pw")
+        from articles.models import Article
+
+        cls.Article = Article
+        for i in range(25):
+            Article.objects.create(author=author, title=f"t{i:02d}", summary="s", content="c")
+
+    def setUp(self):
+        self.rf = RequestFactory()
+        self.qs = self.Article.objects.all().order_by("title")
+
+    def test_happy_path(self):
+        result = paginate(self.qs, self.rf.get("/", {"page": "2"}))
+        self.assertEqual(len(result.items), 10)
+        self.assertEqual([a.title for a in result.items], [f"t{i:02d}" for i in range(10, 20)])
+        self.assertEqual(result.page, 2)
+        self.assertEqual(result.pages, range(1, 4))
+
+    def test_invalid_page_string_defaults_to_one(self):
+        result = paginate(self.qs, self.rf.get("/", {"page": "abc"}))
+        self.assertEqual(result.page, 1)
+        self.assertEqual(len(result.items), 10)
+        self.assertEqual(result.items[0].title, "t00")
+
+    def test_page_zero_clamped_to_one(self):
+        result = paginate(self.qs, self.rf.get("/", {"page": "0"}))
+        self.assertEqual(result.page, 1)
+        self.assertEqual(len(result.items), 10)
+        self.assertEqual(result.items[0].title, "t00")
+
+    def test_page_beyond_range_returns_empty_items(self):
+        small_qs = self.qs.filter(title__in=["t00", "t01", "t02", "t03", "t04"])
+        result = paginate(small_qs, self.rf.get("/", {"page": "99"}))
+        self.assertEqual(result.items, [])
+        self.assertEqual(result.page, 99)
+        self.assertEqual(result.pages, range(1, 2))
+
+    def test_empty_queryset_still_has_one_page(self):
+        empty_qs = self.Article.objects.filter(title="does-not-exist")
+        result = paginate(empty_qs, self.rf.get("/"))
+        self.assertEqual(result.items, [])
+        self.assertEqual(result.page, 1)
+        self.assertEqual(result.pages, range(1, 2))
+
+    def test_missing_page_param_defaults_to_one(self):
+        result = paginate(self.qs, self.rf.get("/"))
+        self.assertEqual(result.page, 1)
+        self.assertEqual(len(result.items), 10)
+        self.assertEqual(result.pages, range(1, 4))
