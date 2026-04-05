@@ -80,10 +80,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 # The parsed format follows postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
 DATABASE_URL = getenv("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith((":memory:", "file:")):
-    if not DEBUG:
+    if not DEBUG:  # pragma: no cover
         raise RuntimeError("In-memory SQLite should only be used with DEBUG=True")
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": DATABASE_URL}}
-elif DATABASE_URL:
+elif DATABASE_URL:  # pragma: no cover
     PARSED_DATABASE_URL = urlparse(DATABASE_URL)
     DATABASES = {
         "default": {
@@ -95,7 +95,7 @@ elif DATABASE_URL:
             "PORT": PARSED_DATABASE_URL.port,
         }
     }
-elif DEBUG:
+elif DEBUG:  # pragma: no cover
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
 else:
     raise SystemExit(

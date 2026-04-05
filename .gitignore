@@ -6,3 +6,8 @@ db.sqlite3
 node_modules/
 playwright/test-results/
 playwright/playwright-report/
+.venv/
+.coverage
+htmlcov/
+.ruff_cache/
+.pytest_cache/
