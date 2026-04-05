@@ -281,6 +281,34 @@ class ArticleCreateViewTest(TestCase):
         resp = self.client.post(reverse("article_create"), {"title": "", "description": "", "body": "", "tags": ""})
         self.assertEqual(resp.status_code, 200)
 
+    def test_post_with_draft_action_creates_draft(self):
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_create"),
+            {"title": "Secret", "description": "", "body": "", "tags": "", "action": "draft"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        art = Article.objects.get(title="Secret")
+        self.assertFalse(art.is_published)
+        self.assertIsNone(art.published_at)
+
+    def test_post_with_publish_action_creates_published(self):
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_create"),
+            {"title": "Loud", "description": "", "body": "", "tags": "", "action": "publish"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        art = Article.objects.get(title="Loud")
+        self.assertTrue(art.is_published)
+        self.assertIsNotNone(art.published_at)
+
+    def test_editor_shows_save_as_draft_button_on_create(self):
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_create"))
+        self.assertContains(resp, "Save as Draft")
+        self.assertContains(resp, "Publish Article")
+
 
 class ArticleEditViewTest(TestCase):
     def setUp(self):
@@ -319,6 +347,55 @@ class ArticleEditViewTest(TestCase):
             {"title": "", "description": "", "body": "", "tags": ""},
         )
         self.assertEqual(resp.status_code, 200)
+
+    def test_editing_published_article_ignores_draft_action(self):
+        # Safety net: even if someone POSTs action=draft against a
+        # published article, it stays published — the editor UI hides the
+        # button, and the view refuses to unpublish via the editor path.
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_edit", args=[self.article.slug]),
+            {"title": "Edit Me", "description": "d", "body": "b", "tags": "", "action": "draft"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.article.refresh_from_db()
+        self.assertTrue(self.article.is_published)
+
+    def test_editing_a_draft_with_publish_action_publishes(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False, published_at=None)
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_edit", args=[self.article.slug]),
+            {"title": "Edit Me", "description": "d", "body": "b", "tags": "", "action": "publish"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.article.refresh_from_db()
+        self.assertTrue(self.article.is_published)
+        self.assertIsNotNone(self.article.published_at)
+
+    def test_editing_a_draft_with_draft_action_keeps_draft(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False, published_at=None)
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_edit", args=[self.article.slug]),
+            {"title": "Edit Me", "description": "d", "body": "b", "tags": "", "action": "draft"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.article.refresh_from_db()
+        self.assertFalse(self.article.is_published)
+
+    def test_editor_hides_save_as_draft_for_published_article(self):
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_edit", args=[self.article.slug]))
+        self.assertNotContains(resp, "Save as Draft")
+        self.assertContains(resp, "Publish Article")
+
+    def test_editor_shows_save_as_draft_for_draft(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False, published_at=None)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_edit", args=[self.article.slug]))
+        self.assertContains(resp, "Save as Draft")
+        self.assertContains(resp, "Publish Article")
 
 
 class ArticleDeleteViewTest(TestCase):

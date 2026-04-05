@@ -149,11 +149,16 @@ def article_detail_view(request, slug):
     )
 
 
-def _save_article_form(form, article):
-    """Map form fields (description/body) to model fields (summary/content) and save."""
+def _save_article_form(form, article, publish: bool):
+    """Map form fields (description/body) to model fields (summary/content) and save.
+
+    publish=True marks the article as published (and stamps published_at on
+    first publish via Article.save()); publish=False leaves it as a draft.
+    """
     article.title = form.cleaned_data["title"]
     article.summary = form.cleaned_data.get("description", "")
     article.content = form.cleaned_data.get("body", "")
+    article.is_published = publish
     article.save()
     tag_string = form.cleaned_data.get("tags", "")
     article.tags.clear()
@@ -165,13 +170,22 @@ def _save_article_form(form, article):
     cache.delete(ALL_TAGS_CACHE_KEY)
 
 
+def _editor_action_is_publish(request) -> bool:
+    """True if the editor form was submitted with the Publish button.
+
+    Any value other than explicit 'draft' is treated as publish, so the
+    default primary submit stays 'Publish Article'.
+    """
+    return request.POST.get("action") != "draft"
+
+
 @login_required
 def article_create_view(request):
     if request.method == "POST":
         form = ArticleForm(request.POST)
         if form.is_valid():
             article = Article(author=request.user)
-            _save_article_form(form, article)
+            _save_article_form(form, article, publish=_editor_action_is_publish(request))
             return redirect("article_detail", slug=article.slug)
     else:
         form = ArticleForm()
@@ -184,7 +198,15 @@ def article_edit_view(request, slug):
     if request.method == "POST":
         form = ArticleForm(request.POST)
         if form.is_valid():
-            _save_article_form(form, article)
+            # When editing a published article the "Save as Draft" button is
+            # hidden; the only way to unpublish is the dedicated Unpublish
+            # action on the article page. So here, a published article stays
+            # published regardless of the submit button.
+            if article.is_published:
+                publish = True
+            else:
+                publish = _editor_action_is_publish(request)
+            _save_article_form(form, article, publish=publish)
             return redirect("article_detail", slug=article.slug)
     else:
         form = ArticleForm(
