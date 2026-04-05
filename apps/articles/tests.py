@@ -60,6 +60,54 @@ class ArticleModelTest(TestCase):
         self.assertTrue(art.is_favorite)
         self.assertEqual(art.num_favorites, 1)
 
+    def test_new_article_defaults_to_published_with_timestamp(self):
+        user = make_user()
+        a = Article.objects.create(author=user, title="Pub", summary="s", content="c")
+        self.assertTrue(a.is_published)
+        self.assertIsNotNone(a.published_at)
+
+    def test_draft_has_no_published_at(self):
+        user = make_user()
+        a = Article.objects.create(author=user, title="Draft", summary="s", content="c", is_published=False)
+        self.assertFalse(a.is_published)
+        self.assertIsNone(a.published_at)
+
+    def test_publishing_a_draft_stamps_published_at(self):
+        user = make_user()
+        a = Article.objects.create(author=user, title="Later", summary="s", content="c", is_published=False)
+        self.assertIsNone(a.published_at)
+        a.is_published = True
+        a.save()
+        self.assertIsNotNone(a.published_at)
+
+    def test_republishing_does_not_change_published_at(self):
+        user = make_user()
+        a = Article.objects.create(author=user, title="Stable", summary="s", content="c")
+        original = a.published_at
+        a.is_published = False
+        a.save()
+        a.is_published = True
+        a.save()
+        self.assertEqual(a.published_at, original)
+
+    def test_visible_to_anonymous_hides_drafts(self):
+        from django.contrib.auth.models import AnonymousUser
+
+        alice = make_user()
+        Article.objects.create(author=alice, title="Public", summary="", content="")
+        Article.objects.create(author=alice, title="Private", summary="", content="", is_published=False)
+        titles = set(Article.objects.visible_to(AnonymousUser()).values_list("title", flat=True))
+        self.assertEqual(titles, {"Public"})
+
+    def test_visible_to_author_includes_own_drafts(self):
+        alice = make_user()
+        bob = make_user(email="bob@x.com", username="bob")
+        Article.objects.create(author=alice, title="Alice Public", summary="", content="")
+        Article.objects.create(author=alice, title="Alice Draft", summary="", content="", is_published=False)
+        Article.objects.create(author=bob, title="Bob Draft", summary="", content="", is_published=False)
+        titles = set(Article.objects.visible_to(alice).values_list("title", flat=True))
+        self.assertEqual(titles, {"Alice Public", "Alice Draft"})
+
 
 class MarkdownFilterTest(TestCase):
     def test_renders_markdown_and_sanitizes(self):
