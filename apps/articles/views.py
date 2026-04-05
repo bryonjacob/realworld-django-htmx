@@ -77,6 +77,43 @@ def tag_view(request, tag):
     return _build_feed(request, tag=tag)
 
 
+def profile_view(request, username, tab):
+    """Render a user profile page with their articles or favorited articles.
+
+    Lives in articles (not accounts) because the body is article-listing
+    logic. The URL still belongs to the accounts app — see accounts/urls.py
+    and the thin shims in accounts/views.py.
+    """
+    try:
+        profile_user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return render(request, "accounts/profile_404.html", {"username": username}, status=404)
+
+    is_self = request.user == profile_user
+    is_following = request.user.is_authenticated and request.user.is_following(profile_user)
+    queryset = Article.objects.with_favorites(request.user).select_related("author").prefetch_related("tags")
+    if tab == "favorites":
+        queryset = queryset.filter(favorites=profile_user)
+    else:
+        queryset = queryset.filter(author=profile_user)
+    queryset = queryset.order_by("-created")
+    page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
+
+    return render(
+        request,
+        "accounts/profile.html",
+        {
+            "profile_user": profile_user,
+            "is_self": is_self,
+            "is_following": is_following,
+            "articles": page_result.items,
+            "tab": tab,
+            "page": page_result.page,
+            "pages": page_result.pages,
+        },
+    )
+
+
 def article_detail_view(request, slug):
     try:
         article = (

@@ -1,16 +1,14 @@
-from articles.models import Article
+from articles.views import profile_view as _profile_view
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from accounts.constants import PROFILE_ARTICLES_PER_PAGE
 from accounts.forms import LoginForm, RegisterForm, SettingsForm
 from accounts.models import User
 from helpers.exceptions import clean_integrity_error
 from helpers.htmx import is_htmx
-from helpers.pagination import paginate
 
 
 def login_view(request):
@@ -75,37 +73,6 @@ def settings_view(request):
 def logout_view(request):
     logout(request)
     return redirect("home")
-
-
-def _profile_view(request, username, *, tab):
-    try:
-        profile_user = User.objects.get(username=username)
-    except User.DoesNotExist:
-        return render(request, "accounts/profile_404.html", {"username": username}, status=404)
-
-    is_self = request.user == profile_user
-    is_following = request.user.is_authenticated and request.user.is_following(profile_user)
-    queryset = Article.objects.with_favorites(request.user).select_related("author").prefetch_related("tags")
-    if tab == "favorites":
-        queryset = queryset.filter(favorites=profile_user)
-    else:
-        queryset = queryset.filter(author=profile_user)
-    queryset = queryset.order_by("-created")
-    page_result = paginate(queryset, request, per_page=PROFILE_ARTICLES_PER_PAGE)
-
-    return render(
-        request,
-        "accounts/profile.html",
-        {
-            "profile_user": profile_user,
-            "is_self": is_self,
-            "is_following": is_following,
-            "articles": page_result.items,
-            "tab": tab,
-            "page": page_result.page,
-            "pages": page_result.pages,
-        },
-    )
 
 
 def profile_view(request, username):
