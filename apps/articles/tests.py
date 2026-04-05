@@ -1,10 +1,12 @@
 """Unit tests for articles app — views, models, template tags, management command."""
 
 from io import StringIO
+from typing import cast
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management import call_command
+from django.http import HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 
@@ -99,7 +101,7 @@ class HomeViewTest(TestCase):
     def test_following_feed_anonymous_redirects_to_login(self):
         resp = self.client.get(reverse("home") + "?feed=following")
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("login", resp.url)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
 
     def test_following_feed_authenticated(self):
         self.alice.followers.add(self.bob)  # bob follows alice
@@ -150,7 +152,7 @@ class ArticleCreateViewTest(TestCase):
     def test_anonymous_redirects(self):
         resp = self.client.get(reverse("article_create"))
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("login", resp.url)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
 
     def test_get_renders_form(self):
         self.client.force_login(self.alice)
@@ -251,7 +253,7 @@ class ArticleFavoriteViewTest(TestCase):
     def test_anonymous_redirects(self):
         resp = self.client.post(reverse("article_favorite", args=[self.article.slug]))
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("login", resp.url)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
 
     def test_toggle_favorite_on_and_off(self):
         self.client.force_login(self.bob)

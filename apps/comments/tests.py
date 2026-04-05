@@ -1,7 +1,10 @@
 """Unit tests for comments app — views."""
 
+from typing import cast
+
 from articles.models import Article
 from django.contrib.auth import get_user_model
+from django.http import HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
 
@@ -23,7 +26,7 @@ class CommentCreateViewTest(TestCase):
     def test_anonymous_redirects(self):
         resp = self.client.post(reverse("comment_create", args=[self.article.slug]), {"body": "hi"})
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("login", resp.url)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
 
     def test_empty_body_is_noop(self):
         self.client.force_login(self.bob)
@@ -67,7 +70,7 @@ class CommentDeleteViewTest(TestCase):
     def test_anonymous_redirects(self):
         resp = self.client.post(reverse("comment_delete", args=[self.article.slug, self.comment.id]))
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("login", resp.url)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
 
     def test_comment_author_can_delete(self):
         self.client.force_login(self.bob)

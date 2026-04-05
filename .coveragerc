@@ -19,7 +19,5 @@ exclude_lines =
     # psycopg2 is installed in dev; the ImportError fallback only triggers
     # when the optional dep is missing.
     except ImportError:
-    # MEDIA_URL/MEDIA_ROOT are not defined in settings; this is dead code.
-    urlpatterns \+= static
 show_missing = True
 skip_covered = False

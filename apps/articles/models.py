@@ -2,20 +2,18 @@ from typing import Self
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db import models
 from django.utils.text import slugify
 from taggit.managers import TaggableManager
 
-User = get_user_model()
-
 
 class ArticleQuerySet(models.QuerySet):
-    def with_favorites(self, user: AnonymousUser | User) -> Self:
+    def with_favorites(self, user: AbstractBaseUser | AnonymousUser) -> Self:
         return self.annotate(
             num_favorites=models.Count("favorites"),
             is_favorite=(
-                models.Exists(get_user_model().objects.filter(pk=user.id, favorites=models.OuterRef("pk")))
+                models.Exists(get_user_model().objects.filter(pk=user.pk, favorites=models.OuterRef("pk")))
                 if user.is_authenticated
                 else models.Value(False, output_field=models.BooleanField())
             ),
