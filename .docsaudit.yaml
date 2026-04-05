@@ -1,0 +1,87 @@
+version: 1
+
+# Directories that never need docs — build artifacts, generated code, vendored deps
+ignore:
+  - .git/**
+  - .venv/**
+  - node_modules/**
+  - __pycache__/**
+  - "*.pyc"
+  - .pytest_cache/**
+  - .ruff_cache/**
+  - .mypy_cache/**
+  - htmlcov/**
+  - dist/**
+  - build/**
+  - staticfiles/**
+  # Django migrations are auto-generated — no human-written docs belong here
+  - apps/*/migrations/**
+  # Git submodule — upstream-owned content
+  - realworld/**
+  # Playwright run artifacts (regenerated on every run)
+  - playwright/test-results/**
+  - playwright/playwright-report/**
+  - playwright/node_modules/**
+  # Static assets — submodule-owned CSS/images, no docs needed
+  - static/**
+  # Single-file templatetags — self-documenting
+  - apps/articles/templatetags/**
+  # Thin wrappers around commands/ subdir
+  - apps/*/management
+  # Management command dirs — one file each, self-documenting
+  - apps/*/management/commands/**
+
+max_age_days: 90
+
+audits:
+  README.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    # Project-wide README — scope is everything
+    scope: ["**/*"]
+
+  CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    # Root CLAUDE.md: tooling and workflow rules that apply project-wide
+    scope: ["Makefile", "justfile", "pyproject.toml", ".coveragerc"]
+
+  apps/CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    scope: ["apps/**/*"]
+
+  apps/accounts/CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    scope: ["apps/accounts/**/*"]
+
+  apps/articles/CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    scope: ["apps/articles/**/*"]
+
+  apps/comments/CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    scope: ["apps/comments/**/*"]
+
+  config/CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    scope: ["config/**/*"]
+
+  helpers/CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    scope: ["helpers/**/*"]
+
+  templates/CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    scope: ["templates/**/*"]
+
+  playwright/CLAUDE.md:
+    commit: 25451f4bc2c9c2d57a217e304823a28ee6ec3c7d
+    date: 2026-04-05T17:44:17Z
+    scope: ["playwright/playwright.config.ts", "playwright/package.json"]

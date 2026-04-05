@@ -57,24 +57,39 @@ docker compose up --build  # rebuild and run
 
 ## Testing
 
+This project uses `just` as its primary task runner (see `justfile`). Legacy `make` targets still work.
+
 | Command | Description |
 |---------|-------------|
-| `make test-django-fast` | Unit tests (in-memory SQLite, fast hasher) |
-| `make test-django` | Unit tests (file-based SQLite) |
-| `make e2e` | Playwright e2e tests (auto-starts server, needs bun) |
-| `make verify` | Lint + type-check + unit tests |
+| `just check-all` | Lint + type-check + unit tests (with 96% coverage gate, actual 100%) |
+| `just test` | Unit tests only (fast, in-memory SQLite, fast hasher) |
+| `just coverage` | Unit tests + HTML coverage report at `htmlcov/index.html` |
+| `just integration-test` | Playwright e2e tests (uses `npx`, no bun dependency) |
+| `make test-django-fast` | Unit tests via Make (legacy) |
+| `make e2e` | Playwright via `bun` (legacy; prefer `just integration-test`) |
+| `make verify` | Make equivalent of `just check-all` (legacy) |
 
 ### Current test status
 
-- **Unit tests:** 4/4 passing — minimal, only covering internals hard to reach via browser (DB error parsing)
-- **E2E tests:** 74/74 passing (65 API-only tests skipped) — the [RealWorld e2e suite](https://github.com/realworld-apps/realworld) is the primary test coverage for this project, validating views, forms, and models through real browser interactions
+- **Unit tests:** 107/107 passing, 100% coverage across all production code. Per-app test modules (`apps/*/tests.py`) plus `helpers/tests.py`, using `django.test.Client` against in-memory SQLite with the fast password hasher — full suite runs in ~0.5s.
+- **E2E tests:** 74/74 passing, 65 API-only tests skipped via `API_MODE=false`. The [RealWorld e2e suite](https://github.com/realworld-apps/realworld) validates browser behavior end to end.
 
 ## Development
 
-- `make lint` — auto-fix lint issues (ruff)
-- `make lint-check` — check without fixing
-- `make type-check` — run ty type checker
-- `make clean` — remove `__pycache__` directories
+Primary tooling is `just`:
+
+- `just format` — auto-fix formatting (ruff)
+- `just lint` — check linting rules
+- `just typecheck` — run ty type checker (zero diagnostics on current `main`)
+- `just complexity` — per-function complexity report (radon)
+- `just loc` — largest files by LOC (cloc)
+- `just clean` — remove caches, coverage artifacts, `__pycache__`
+
+Legacy `make lint` / `make lint-check` / `make type-check` / `make clean` still work and are delegated to by the corresponding `just` recipes where applicable.
+
+### Per-module documentation
+
+The codebase has a `CLAUDE.md` file in every meaningful module (`apps/`, each of the three apps, `config/`, `helpers/`, `templates/`, `playwright/`). Start there when navigating an unfamiliar area.
 
 ## License
 
