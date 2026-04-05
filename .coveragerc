@@ -1,0 +1,25 @@
+[run]
+source = apps,helpers,config
+omit =
+    */migrations/*
+    config/asgi.py
+    config/wsgi.py
+    manage.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    # Environment-specific settings branches: exercised in deployment configs,
+    # not under our DEBUG=True in-memory SQLite test runner.
+    raise SystemExit
+    raise RuntimeError..USE_FAST_HASHER
+    # psycopg2 is installed in dev; the ImportError fallback only triggers
+    # when the optional dep is missing.
+    except ImportError:
+    # MEDIA_URL/MEDIA_ROOT are not defined in settings; this is dead code.
+    urlpatterns \+= static
+show_missing = True
+skip_covered = False
