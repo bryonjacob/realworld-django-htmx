@@ -1,15 +1,19 @@
 """Unit tests for articles app — views, models, template tags, management command."""
 
+import tempfile
+from contextlib import ExitStack
 from io import StringIO
+from pathlib import Path
 from typing import cast
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management import call_command
 from django.http import HttpResponseRedirect
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from articles import search
 from articles.models import Article
 from articles.templatetags.markdown_filter import render_markdown
 
@@ -309,3 +313,93 @@ class CreateUserCommandTest(TestCase):
         out = StringIO()
         call_command("createUser", stdout=out)
         self.assertIn("Please provide", out.getvalue())
+
+
+def _make_search_article(**overrides) -> Article:
+    """Create an Article with a fresh User. Used by SearchModuleTests."""
+    username = overrides.pop("username", "alice")
+    author = User.objects.create_user(username=username, email=f"{username}@x.test", password="pw123456")
+    defaults = {"title": "Hello Django", "summary": "A post about web", "content": "Django is a web framework"}
+    defaults.update(overrides)
+    return Article.objects.create(author=author, **defaults)
+
+
+class SearchModuleTests(TestCase):
+    def setUp(self):
+        self._stack = ExitStack()
+        tmp = self._stack.enter_context(tempfile.TemporaryDirectory())
+        self._stack.enter_context(override_settings(SEARCH_INDEX_DIR=tmp))
+        self.addCleanup(self._stack.close)
+
+    def test_query_empty_string_returns_empty_list(self):
+        self.assertEqual(search.query_ids(""), [])
+        self.assertEqual(search.query_ids("   "), [])
+
+    def test_index_then_query_finds_article(self):
+        a = _make_search_article(title="Django HTMX patterns")
+        search.index_article(a)
+        self.assertEqual(search.query_ids("django"), [a.pk])
+
+    def test_title_outranks_content(self):
+        a1 = _make_search_article(username="u1", title="Cooking", summary="x", content="django appears here")
+        a2 = _make_search_article(username="u2", title="Django guide", summary="y", content="cooking appears here")
+        search.index_article(a1)
+        search.index_article(a2)
+        self.assertEqual(search.query_ids("django"), [a2.pk, a1.pk])
+
+    def test_deindex_removes_from_results(self):
+        a = _make_search_article(title="Removable")
+        search.index_article(a)
+        self.assertEqual(search.query_ids("removable"), [a.pk])
+        search.deindex_article(a.pk)
+        self.assertEqual(search.query_ids("removable"), [])
+
+    def test_deindex_missing_id_is_noop(self):
+        # Must not raise even when nothing matches.
+        search.deindex_article(99999)
+
+    def test_query_no_matches_returns_empty(self):
+        a = _make_search_article(title="Hello world")
+        search.index_article(a)
+        self.assertEqual(search.query_ids("nonexistentword"), [])
+
+    def test_get_index_creates_directory(self):
+        with tempfile.TemporaryDirectory() as parent:
+            sub = Path(parent) / "deeply" / "nested"
+            with override_settings(SEARCH_INDEX_DIR=sub):
+                ix = search.get_index()
+                self.assertTrue(sub.exists())
+                self.assertIsNotNone(ix)
+
+    def test_get_index_reopens_existing(self):
+        # First call creates; second call must reopen rather than recreate.
+        a = _make_search_article(title="Persisted")
+        search.index_article(a)
+        # New get_index() call goes through the open_dir branch.
+        ix = search.get_index()
+        self.assertIsNotNone(ix)
+        self.assertEqual(search.query_ids("persisted"), [a.pk])
+
+    def test_reindex_all_rebuilds_from_db(self):
+        a1 = _make_search_article(username="u1", title="First")
+        a2 = _make_search_article(username="u2", title="Second")
+        # Don't call index_article — verify reindex_all picks them up from the DB.
+        search.reindex_all()
+        self.assertEqual(search.query_ids("first"), [a1.pk])
+        self.assertEqual(search.query_ids("second"), [a2.pk])
+
+    def test_update_document_replaces_existing(self):
+        a = _make_search_article(title="Original Title")
+        search.index_article(a)
+        a.title = "Replaced Title"
+        a.save()
+        search.index_article(a)
+        self.assertEqual(search.query_ids("original"), [])
+        self.assertEqual(search.query_ids("replaced"), [a.pk])
+
+    def test_query_ids_returns_list_of_ints(self):
+        a = _make_search_article(title="Typed")
+        search.index_article(a)
+        result = search.query_ids("typed")
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], int)
