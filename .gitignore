@@ -16,3 +16,4 @@ htmlcov/
 package-lock.json
 sbom.json
 grype-report.json
+var/

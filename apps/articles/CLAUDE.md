@@ -16,6 +16,7 @@ The core content app. Owns everything about articles themselves (model, CRUD vie
   - `article_detail_view`, `article_create_view`, `article_edit_view`, `article_delete_view`, `article_favorite_view`
   - `_save_article_form(form, article)` — private helper that translates form field names (`description`, `body`) to model field names (`summary`, `content`). **Don't rename either side** — form names are pinned by the RealWorld SELECTORS.md contract.
   - `profile_view(request, username, tab)` — the actual profile page renderer. Called by shims in `accounts/views.py`. Handles "my articles" and "favorites" tabs with per-tab querysets.
+- **search.py** — Whoosh-backed text search index. File-based, DB-independent. Public surface: `get_index()`, `index_article(article)`, `deindex_article(article_id)`, `query_ids(q, limit=200)`, `reindex_all()`. Schema field-boosts `title` (3.0), `summary` (2.0), `content` (1.0). Index dir comes from `settings.SEARCH_INDEX_DIR`; tests override per-class via `tempfile.TemporaryDirectory()`. Deliberately Django-light — no signals, views, or template imports here.
 - **constants.py** — `ARTICLES_PER_PAGE`, `ALL_TAGS_CACHE_KEY`, `ALL_TAGS_CACHE_TTL_SECONDS`. Introduced in the `refactor-pass` epic to replace magic values.
 - **forms.py** — `ArticleForm` with fields `title`, `description`, `body`, `tags`. Field names match the RealWorld SELECTORS.md contract.
 - **admin.py** — auto-registers every model in the project via `apps.get_models()`. Lives here for historical reasons — code smell but harmless.
