@@ -1,0 +1,8 @@
+only-fixed: true
+fail-on-severity: critical
+output: table
+# Add ignore rules here as needed, e.g.:
+# ignore:
+#   - vulnerability: CVE-2025-12345
+#     fix-state: wont-fix
+#     reason: "Build tool only, not distributed"

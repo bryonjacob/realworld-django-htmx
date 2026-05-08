@@ -7,7 +7,12 @@ node_modules/
 playwright/test-results/
 playwright/playwright-report/
 .venv/
+.venv-lic/
 .coverage
 htmlcov/
 .ruff_cache/
 .pytest_cache/
+*.egg-info/
+package-lock.json
+sbom.json
+grype-report.json
