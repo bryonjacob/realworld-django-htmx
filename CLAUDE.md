@@ -49,3 +49,7 @@ There's a `CLAUDE.md` in every meaningful module:
 - `helpers/CLAUDE.md` — shared utilities (`paginate`, `is_htmx`, `clean_integrity_error`)
 - `templates/CLAUDE.md` — full-page vs partial split, selectors contract
 - `playwright/CLAUDE.md` — e2e harness, API_MODE, baseline
+
+## Roadmap
+
+Hypothetical product roadmap (not committed work) lives in `planning/ROADMAP.md`, with one-page PRDs under `planning/prds/` covering features the RealWorld spec leaves out — drafts, search, notifications, deployment, etc. Use it as directional input for planning sessions, not as a spec.
