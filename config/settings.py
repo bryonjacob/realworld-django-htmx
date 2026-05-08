@@ -137,6 +137,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 
+# Search index (Whoosh) — file-based, DB-independent
+SEARCH_INDEX_DIR = Path(getenv("SEARCH_INDEX_DIR", BASE_DIR / "var" / "search_index"))
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

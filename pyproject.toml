@@ -25,6 +25,7 @@ dependencies = [
     "sqlparse==0.4.4",
     "typing-extensions>=4.12.2",
     "nh3>=0.3.3",
+    "whoosh-reloaded>=2.7.5",
 ]
 
 [project.optional-dependencies]
