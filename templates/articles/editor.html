@@ -34,7 +34,10 @@
               <input type="hidden" name="tags" id="tag-hidden" value="{{ form.tags.value|default:'' }}">
               <div class="tag-list" id="tag-list"></div>
             </fieldset>
-            <button class="btn btn-lg btn-primary pull-xs-right" type="submit">Publish Article</button>
+            <button class="btn btn-lg btn-primary pull-xs-right" type="submit" name="action" value="publish">Publish Article</button>
+            {% if not article or not article.is_published %}
+            <button class="btn btn-lg btn-outline-secondary pull-xs-right" type="submit" name="action" value="draft" style="margin-right: 0.5rem;">Save as Draft</button>
+            {% endif %}
           </fieldset>
         </form>
       </div>

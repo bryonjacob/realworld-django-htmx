@@ -30,8 +30,11 @@ def _feed_queryset(
 
     Returns (queryset, active_tab). queryset is None when an anonymous user
     requested the 'following' feed — the caller should redirect to login.
+
+    Feeds never include drafts — even the author's own. Drafts live only
+    on the drafts tab of the author's profile.
     """
-    queryset = Article.objects.with_favorites(user)
+    queryset = Article.objects.with_favorites(user).filter(is_published=True)
     if feed == "following":
         if not user.is_authenticated:
             return None, "following"
@@ -49,10 +52,13 @@ def _build_feed(request, tag=None):
     if queryset is None:
         return redirect("login")
 
-    queryset = queryset.select_related("author").prefetch_related("tags").order_by("-created")
+    queryset = queryset.select_related("author").prefetch_related("tags").order_by("-published_at")
     page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
 
-    tags = cache.get_or_set(ALL_TAGS_CACHE_KEY, Tag.objects.all, timeout=ALL_TAGS_CACHE_TTL_SECONDS)
+    def _published_tags():
+        return list(Tag.objects.filter(article__is_published=True).distinct())
+
+    tags = cache.get_or_set(ALL_TAGS_CACHE_KEY, _published_tags, timeout=ALL_TAGS_CACHE_TTL_SECONDS)
 
     context = {
         "articles": page_result.items,
@@ -91,13 +97,22 @@ def profile_view(request, username, tab):
 
     is_self = request.user == profile_user
     is_following = request.user.is_authenticated and request.user.is_following(profile_user)
+
+    # The drafts tab is strictly owner-only. 404 for anyone else so the
+    # URL can't be used to probe whether a given user has drafts.
+    if tab == "drafts" and not is_self:
+        return render(request, "accounts/profile_404.html", {"username": username}, status=404)
+
     queryset = Article.objects.with_favorites(request.user).select_related("author").prefetch_related("tags")
-    if tab == "favorites":
-        queryset = queryset.filter(favorites=profile_user)
+    if tab == "drafts":
+        queryset = queryset.filter(author=profile_user, is_published=False).order_by("-updated")
+    elif tab == "favorites":
+        queryset = queryset.filter(favorites=profile_user, is_published=True).order_by("-published_at")
     else:
-        queryset = queryset.filter(author=profile_user)
-    queryset = queryset.order_by("-created")
+        queryset = queryset.filter(author=profile_user, is_published=True).order_by("-published_at")
     page_result = paginate(queryset, request, per_page=ARTICLES_PER_PAGE)
+
+    drafts_count = Article.objects.filter(author=profile_user, is_published=False).count() if is_self else 0
 
     return render(
         request,
@@ -110,6 +125,7 @@ def profile_view(request, username, tab):
             "tab": tab,
             "page": page_result.page,
             "pages": page_result.pages,
+            "drafts_count": drafts_count,
         },
     )
 
@@ -118,6 +134,7 @@ def article_detail_view(request, slug):
     try:
         article = (
             Article.objects.with_favorites(request.user)
+            .visible_to(request.user)
             .select_related("author")
             .prefetch_related("tags")
             .get(slug=slug)
@@ -137,11 +154,16 @@ def article_detail_view(request, slug):
     )
 
 
-def _save_article_form(form, article):
-    """Map form fields (description/body) to model fields (summary/content) and save."""
+def _save_article_form(form, article, publish: bool):
+    """Map form fields (description/body) to model fields (summary/content) and save.
+
+    publish=True marks the article as published (and stamps published_at on
+    first publish via Article.save()); publish=False leaves it as a draft.
+    """
     article.title = form.cleaned_data["title"]
     article.summary = form.cleaned_data.get("description", "")
     article.content = form.cleaned_data.get("body", "")
+    article.is_published = publish
     article.save()
     tag_string = form.cleaned_data.get("tags", "")
     article.tags.clear()
@@ -153,13 +175,22 @@ def _save_article_form(form, article):
     cache.delete(ALL_TAGS_CACHE_KEY)
 
 
+def _editor_action_is_publish(request) -> bool:
+    """True if the editor form was submitted with the Publish button.
+
+    Any value other than explicit 'draft' is treated as publish, so the
+    default primary submit stays 'Publish Article'.
+    """
+    return request.POST.get("action") != "draft"
+
+
 @login_required
 def article_create_view(request):
     if request.method == "POST":
         form = ArticleForm(request.POST)
         if form.is_valid():
             article = Article(author=request.user)
-            _save_article_form(form, article)
+            _save_article_form(form, article, publish=_editor_action_is_publish(request))
             return redirect("article_detail", slug=article.slug)
     else:
         form = ArticleForm()
@@ -172,7 +203,15 @@ def article_edit_view(request, slug):
     if request.method == "POST":
         form = ArticleForm(request.POST)
         if form.is_valid():
-            _save_article_form(form, article)
+            # When editing a published article the "Save as Draft" button is
+            # hidden; the only way to unpublish is the dedicated Unpublish
+            # action on the article page. So here, a published article stays
+            # published regardless of the submit button.
+            if article.is_published:
+                publish = True
+            else:
+                publish = _editor_action_is_publish(request)
+            _save_article_form(form, article, publish=publish)
             return redirect("article_detail", slug=article.slug)
     else:
         form = ArticleForm(
@@ -196,8 +235,28 @@ def article_delete_view(request, slug):
 
 @login_required
 @require_POST
+def article_publish_view(request, slug):
+    """Toggle an article's published state. Author-only.
+
+    Body param 'action' is 'publish' or 'unpublish'. Publishing stamps
+    published_at the first time (handled in Article.save). Unpublishing
+    leaves comments and favorites intact — they just become invisible
+    until the article is republished.
+    """
+    article = get_object_or_404(Article, slug=slug, author=request.user)
+    action = request.POST.get("action")
+    if action == "unpublish":
+        article.is_published = False
+    else:
+        article.is_published = True
+    article.save()
+    return redirect("article_detail", slug=article.slug)
+
+
+@login_required
+@require_POST
 def article_favorite_view(request, slug):
-    article = get_object_or_404(Article, slug=slug)
+    article = get_object_or_404(Article.objects.visible_to(request.user), slug=slug, is_published=True)
     if article.favorites.filter(id=request.user.id).exists():
         article.favorites.remove(request.user)
     else:

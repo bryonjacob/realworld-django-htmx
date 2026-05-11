@@ -60,6 +60,54 @@ class ArticleModelTest(TestCase):
         self.assertTrue(art.is_favorite)
         self.assertEqual(art.num_favorites, 1)
 
+    def test_new_article_defaults_to_published_with_timestamp(self):
+        user = make_user()
+        a = Article.objects.create(author=user, title="Pub", summary="s", content="c")
+        self.assertTrue(a.is_published)
+        self.assertIsNotNone(a.published_at)
+
+    def test_draft_has_no_published_at(self):
+        user = make_user()
+        a = Article.objects.create(author=user, title="Draft", summary="s", content="c", is_published=False)
+        self.assertFalse(a.is_published)
+        self.assertIsNone(a.published_at)
+
+    def test_publishing_a_draft_stamps_published_at(self):
+        user = make_user()
+        a = Article.objects.create(author=user, title="Later", summary="s", content="c", is_published=False)
+        self.assertIsNone(a.published_at)
+        a.is_published = True
+        a.save()
+        self.assertIsNotNone(a.published_at)
+
+    def test_republishing_does_not_change_published_at(self):
+        user = make_user()
+        a = Article.objects.create(author=user, title="Stable", summary="s", content="c")
+        original = a.published_at
+        a.is_published = False
+        a.save()
+        a.is_published = True
+        a.save()
+        self.assertEqual(a.published_at, original)
+
+    def test_visible_to_anonymous_hides_drafts(self):
+        from django.contrib.auth.models import AnonymousUser
+
+        alice = make_user()
+        Article.objects.create(author=alice, title="Public", summary="", content="")
+        Article.objects.create(author=alice, title="Private", summary="", content="", is_published=False)
+        titles = set(Article.objects.visible_to(AnonymousUser()).values_list("title", flat=True))
+        self.assertEqual(titles, {"Public"})
+
+    def test_visible_to_author_includes_own_drafts(self):
+        alice = make_user()
+        bob = make_user(email="bob@x.com", username="bob")
+        Article.objects.create(author=alice, title="Alice Public", summary="", content="")
+        Article.objects.create(author=alice, title="Alice Draft", summary="", content="", is_published=False)
+        Article.objects.create(author=bob, title="Bob Draft", summary="", content="", is_published=False)
+        titles = set(Article.objects.visible_to(alice).values_list("title", flat=True))
+        self.assertEqual(titles, {"Alice Public", "Alice Draft"})
+
 
 class MarkdownFilterTest(TestCase):
     def test_renders_markdown_and_sanitizes(self):
@@ -122,6 +170,35 @@ class HomeViewTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("partials/feed_content.html", [t.name for t in resp.templates if t.name])
 
+    def test_drafts_hidden_from_global_feed(self):
+        make_article(self.alice, title="Draft One")
+        Article.objects.filter(title="Draft One").update(is_published=False)
+        resp = self.client.get(reverse("home"))
+        self.assertNotContains(resp, "Draft One")
+
+    def test_drafts_hidden_from_global_feed_for_author(self):
+        cache.clear()
+        make_article(self.alice, title="My Draft")
+        Article.objects.filter(title="My Draft").update(is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("home"))
+        self.assertNotContains(resp, "My Draft")
+
+    def test_drafts_hidden_from_tag_feed(self):
+        make_article(self.alice, title="Draft Tag", tags=["secret"])
+        Article.objects.filter(title="Draft Tag").update(is_published=False)
+        resp = self.client.get(reverse("tag", args=["secret"]))
+        self.assertNotContains(resp, "Draft Tag")
+
+    def test_tag_cache_excludes_draft_only_tags(self):
+        cache.clear()
+        a = make_article(self.alice, title="Only Draft", tags=["drafty"])
+        Article.objects.filter(pk=a.pk).update(is_published=False)
+        resp = self.client.get(reverse("home"))
+        tag_names = [t.name for t in resp.context["tags"]]
+        self.assertNotIn("drafty", tag_names)
+        self.assertIn("python", tag_names)
+
 
 class ArticleDetailViewTest(TestCase):
     def setUp(self):
@@ -143,6 +220,24 @@ class ArticleDetailViewTest(TestCase):
         self.client.force_login(self.bob)
         resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
         self.assertTrue(resp.context["is_following"])
+
+    def test_draft_detail_404_for_anonymous(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_draft_detail_404_for_other_user(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        self.client.force_login(self.bob)
+        resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_draft_detail_visible_to_author(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Detail Me")
 
 
 class ArticleCreateViewTest(TestCase):
@@ -186,6 +281,34 @@ class ArticleCreateViewTest(TestCase):
         resp = self.client.post(reverse("article_create"), {"title": "", "description": "", "body": "", "tags": ""})
         self.assertEqual(resp.status_code, 200)
 
+    def test_post_with_draft_action_creates_draft(self):
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_create"),
+            {"title": "Secret", "description": "", "body": "", "tags": "", "action": "draft"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        art = Article.objects.get(title="Secret")
+        self.assertFalse(art.is_published)
+        self.assertIsNone(art.published_at)
+
+    def test_post_with_publish_action_creates_published(self):
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_create"),
+            {"title": "Loud", "description": "", "body": "", "tags": "", "action": "publish"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        art = Article.objects.get(title="Loud")
+        self.assertTrue(art.is_published)
+        self.assertIsNotNone(art.published_at)
+
+    def test_editor_shows_save_as_draft_button_on_create(self):
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_create"))
+        self.assertContains(resp, "Save as Draft")
+        self.assertContains(resp, "Publish Article")
+
 
 class ArticleEditViewTest(TestCase):
     def setUp(self):
@@ -224,6 +347,55 @@ class ArticleEditViewTest(TestCase):
             {"title": "", "description": "", "body": "", "tags": ""},
         )
         self.assertEqual(resp.status_code, 200)
+
+    def test_editing_published_article_ignores_draft_action(self):
+        # Safety net: even if someone POSTs action=draft against a
+        # published article, it stays published — the editor UI hides the
+        # button, and the view refuses to unpublish via the editor path.
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_edit", args=[self.article.slug]),
+            {"title": "Edit Me", "description": "d", "body": "b", "tags": "", "action": "draft"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.article.refresh_from_db()
+        self.assertTrue(self.article.is_published)
+
+    def test_editing_a_draft_with_publish_action_publishes(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False, published_at=None)
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_edit", args=[self.article.slug]),
+            {"title": "Edit Me", "description": "d", "body": "b", "tags": "", "action": "publish"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.article.refresh_from_db()
+        self.assertTrue(self.article.is_published)
+        self.assertIsNotNone(self.article.published_at)
+
+    def test_editing_a_draft_with_draft_action_keeps_draft(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False, published_at=None)
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_edit", args=[self.article.slug]),
+            {"title": "Edit Me", "description": "d", "body": "b", "tags": "", "action": "draft"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.article.refresh_from_db()
+        self.assertFalse(self.article.is_published)
+
+    def test_editor_hides_save_as_draft_for_published_article(self):
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_edit", args=[self.article.slug]))
+        self.assertNotContains(resp, "Save as Draft")
+        self.assertContains(resp, "Publish Article")
+
+    def test_editor_shows_save_as_draft_for_draft(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False, published_at=None)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_edit", args=[self.article.slug]))
+        self.assertContains(resp, "Save as Draft")
+        self.assertContains(resp, "Publish Article")
 
 
 class ArticleDeleteViewTest(TestCase):
@@ -273,6 +445,65 @@ class ArticleFavoriteViewTest(TestCase):
         self.client.force_login(self.bob)
         resp = self.client.post(reverse("article_favorite", args=["ghost"]))
         self.assertEqual(resp.status_code, 404)
+
+    def test_cannot_favorite_a_draft(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        self.client.force_login(self.bob)
+        resp = self.client.post(reverse("article_favorite", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 404)
+
+
+class ArticlePublishViewTest(TestCase):
+    def setUp(self):
+        self.alice = make_user()
+        self.bob = make_user(email="bob@x.com", username="bob")
+        self.article = make_article(self.alice, title="Toggle Me")
+
+    def test_anonymous_redirects(self):
+        resp = self.client.post(reverse("article_publish", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("login", cast(HttpResponseRedirect, resp).url)
+
+    def test_non_author_gets_404(self):
+        self.client.force_login(self.bob)
+        resp = self.client.post(reverse("article_publish", args=[self.article.slug]), {"action": "unpublish"})
+        self.assertEqual(resp.status_code, 404)
+
+    def test_author_unpublishes_published_article(self):
+        self.client.force_login(self.alice)
+        resp = self.client.post(reverse("article_publish", args=[self.article.slug]), {"action": "unpublish"})
+        self.assertRedirects(resp, reverse("article_detail", args=[self.article.slug]))
+        self.article.refresh_from_db()
+        self.assertFalse(self.article.is_published)
+
+    def test_author_publishes_draft_and_stamps_published_at(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False, published_at=None)
+        self.client.force_login(self.alice)
+        resp = self.client.post(reverse("article_publish", args=[self.article.slug]), {"action": "publish"})
+        self.assertRedirects(resp, reverse("article_detail", args=[self.article.slug]))
+        self.article.refresh_from_db()
+        self.assertTrue(self.article.is_published)
+        self.assertIsNotNone(self.article.published_at)
+
+    def test_unpublish_preserves_comments_and_favorites(self):
+        from comments.models import Comment
+
+        self.article.favorites.add(self.bob)
+        Comment.objects.create(article=self.article, author=self.bob, content="nice post")
+        self.client.force_login(self.alice)
+        self.client.post(reverse("article_publish", args=[self.article.slug]), {"action": "unpublish"})
+        self.article.refresh_from_db()
+        self.assertEqual(self.article.favorites.count(), 1)
+        self.assertEqual(self.article.comment_set.count(), 1)
+
+    def test_draft_detail_hides_comments_and_shows_banner(self):
+        Article.objects.filter(pk=self.article.pk).update(is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("article_detail", args=[self.article.slug]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "only you can see this")
+        self.assertNotContains(resp, 'name="body"')  # comment textarea hidden
+        self.assertContains(resp, "Publish Article")  # publish button visible
 
 
 class SeedDataCommandTest(TestCase):

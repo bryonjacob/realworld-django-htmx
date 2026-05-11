@@ -5,19 +5,37 @@
   </a>
   <div class="info">
     <a href="{% url 'profile' username=article.author.username %}" class="author">{{ article.author.username }}</a>
-    <span class="date">{{ article.created|date:"F j, Y" }}</span>
+    <span class="date">{{ article.published_at|default:article.updated|date:"F j, Y" }}</span>
   </div>
   {% if user == article.author %}
     <a href="{% url 'article_edit' slug=article.slug %}" class="btn btn-sm btn-outline-secondary">
       <i class="ion-edit"></i>&nbsp;Edit Article
     </a>
+    {% if article.is_published %}
+    <form method="post" action="{% url 'article_publish' slug=article.slug %}" style="display:inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="unpublish">
+      <button class="btn btn-sm btn-outline-secondary" type="submit"
+              hx-confirm="Unpublish this article? It will be removed from all feeds and the public article page will 404 for other users. You can publish it again later.">
+        <i class="ion-eye-disabled"></i>&nbsp;Unpublish
+      </button>
+    </form>
+    {% else %}
+    <form method="post" action="{% url 'article_publish' slug=article.slug %}" style="display:inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="publish">
+      <button class="btn btn-sm btn-primary" type="submit">
+        <i class="ion-upload"></i>&nbsp;Publish Article
+      </button>
+    </form>
+    {% endif %}
     <form method="post" action="{% url 'article_delete' slug=article.slug %}" style="display:inline">
       {% csrf_token %}
       <button class="btn btn-sm btn-outline-danger" type="submit">
         <i class="ion-trash-a"></i>&nbsp;Delete Article
       </button>
     </form>
-  {% elif user.is_authenticated %}
+  {% elif user.is_authenticated and article.is_published %}
     {% include "partials/follow_button.html" with profile_user=article.author %}
     {% include "partials/favorite_button.html" %}
   {% endif %}

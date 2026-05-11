@@ -43,10 +43,30 @@
                 Favorited Articles
               </a>
             </li>
+            {% if is_self %}
+            <li class="nav-item">
+              <a class="nav-link{% if tab == 'drafts' %} active{% endif %}"
+                 href="{% url 'profile_drafts' username=profile_user.username %}"
+                 hx-get="{% url 'profile_drafts' username=profile_user.username %}"
+                 hx-target=".profile-page" hx-select=".profile-page" hx-swap="outerHTML" hx-push-url="true">
+                Drafts ({{ drafts_count }})
+              </a>
+            </li>
+            {% endif %}
           </ul>
         </div>
 
+        {% if tab == 'drafts' and not articles %}
+        <div class="article-preview">
+          <p class="empty-feed-message">
+            You don't have any drafts. Start writing and click
+            <strong>Save as Draft</strong> to see them here.
+            <a href="{% url 'article_create' %}">Write an article</a>.
+          </p>
+        </div>
+        {% else %}
         {% include "partials/article_list.html" %}
+        {% endif %}
 
         {% if pages|length > 1 %}
         <nav>
@@ -54,7 +74,7 @@
             {% for p in pages %}
             <li class="page-item{% if p == page %} active{% endif %}">
               <button class="page-link"
-                 hx-get="{% if tab == 'favorites' %}{% url 'profile_favorites' username=profile_user.username %}{% else %}{% url 'profile' username=profile_user.username %}{% endif %}?page={{ p }}"
+                 hx-get="{% if tab == 'favorites' %}{% url 'profile_favorites' username=profile_user.username %}{% elif tab == 'drafts' %}{% url 'profile_drafts' username=profile_user.username %}{% else %}{% url 'profile' username=profile_user.username %}{% endif %}?page={{ p }}"
                  hx-target=".profile-page" hx-select=".profile-page" hx-swap="outerHTML" hx-push-url="true">
                 {{ p }}
               </button>

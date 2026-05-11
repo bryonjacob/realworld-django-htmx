@@ -233,6 +233,77 @@ class ProfileViewTest(TestCase):
         resp = self.client.get(reverse("profile", args=["alice"]) + "?page=bogus")
         self.assertEqual(resp.status_code, 200)
 
+    def test_profile_my_articles_hides_drafts_from_owner(self):
+        Article.objects.create(author=self.alice, title="Alice Draft", summary="", content="", is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("profile", args=["alice"]))
+        self.assertContains(resp, "Alice Post")
+        self.assertNotContains(resp, "Alice Draft")
+
+    def test_profile_my_articles_hides_drafts_from_others(self):
+        Article.objects.create(author=self.alice, title="Alice Draft", summary="", content="", is_published=False)
+        resp = self.client.get(reverse("profile", args=["alice"]))
+        self.assertNotContains(resp, "Alice Draft")
+
+    def test_profile_favorites_hides_drafts(self):
+        draft = Article.objects.create(
+            author=self.alice, title="Alice Draft", summary="", content="", is_published=False
+        )
+        draft.favorites.add(self.bob)
+        resp = self.client.get(reverse("profile_favorites", args=["bob"]))
+        self.assertNotContains(resp, "Alice Draft")
+
+    def test_drafts_tab_visible_to_owner(self):
+        Article.objects.create(author=self.alice, title="Alice Draft", summary="", content="", is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("profile_drafts", args=["alice"]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Alice Draft")
+
+    def test_drafts_tab_404_for_other_user(self):
+        Article.objects.create(author=self.alice, title="Alice Draft", summary="", content="", is_published=False)
+        self.client.force_login(self.bob)
+        resp = self.client.get(reverse("profile_drafts", args=["alice"]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_drafts_tab_404_for_anonymous(self):
+        resp = self.client.get(reverse("profile_drafts", args=["alice"]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_drafts_tab_404_for_other_user_even_with_no_drafts(self):
+        # Must not leak draft existence via differing response codes.
+        self.client.force_login(self.bob)
+        resp = self.client.get(reverse("profile_drafts", args=["alice"]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_drafts_tab_empty_state(self):
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("profile_drafts", args=["alice"]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "You don't have any drafts")
+
+    def test_drafts_tab_link_only_visible_to_owner(self):
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("profile", args=["alice"]))
+        self.assertContains(resp, "Drafts (0)")
+        self.client.force_login(self.bob)
+        resp = self.client.get(reverse("profile", args=["alice"]))
+        self.assertNotContains(resp, "Drafts (")
+
+    def test_drafts_count_reflects_draft_articles(self):
+        Article.objects.create(author=self.alice, title="D1", summary="", content="", is_published=False)
+        Article.objects.create(author=self.alice, title="D2", summary="", content="", is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("profile", args=["alice"]))
+        self.assertContains(resp, "Drafts (2)")
+
+    def test_drafts_tab_pagination_handles_many_drafts(self):
+        for i in range(12):
+            Article.objects.create(author=self.alice, title=f"Draft {i}", summary="", content="", is_published=False)
+        self.client.force_login(self.alice)
+        resp = self.client.get(reverse("profile_drafts", args=["alice"]) + "?page=2")
+        self.assertEqual(resp.status_code, 200)
+
     def test_profile_self_view_sets_is_self(self):
         self.client.force_login(self.alice)
         resp = self.client.get(reverse("profile", args=["alice"]))

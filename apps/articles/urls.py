@@ -10,4 +10,5 @@ urlpatterns = [
     path("article/<slug:slug>", views.article_detail_view, name="article_detail"),
     path("article/<slug:slug>/delete", views.article_delete_view, name="article_delete"),
     path("article/<slug:slug>/favorite", views.article_favorite_view, name="article_favorite"),
+    path("article/<slug:slug>/publish", views.article_publish_view, name="article_publish"),
 ]
