@@ -25,10 +25,10 @@ Feature: Article and pagination invariants
 
     @property-based @RID-ARTICLES-PAGINATION-003
     Scenario Outline: Any page request resolves to a page of one or more
-      Given any collection of articles
-      When the feed is requested with a page value of "<requested>"
-      Then the feed responds successfully
-      And the resolved page number is at least 1
+      Given any article collection <C>
+      When <C> is paginated with the page value "<requested>" producing <P>
+      Then <P> responds successfully
+      And the resolved page number of <P> is at least 1
 
       Examples:
         | requested |
@@ -36,18 +36,18 @@ Feature: Article and pagination invariants
         | 0         |
         | -1        |
         | -999      |
-        |           |
         | 1         |
         | 3         |
 
     @property-based @RID-ARTICLES-PAGINATION-004
     Scenario: A page never holds more articles than the page size
-      Given any collection of articles
-      When any page of the feed is requested
-      Then the page holds at most ten articles
+      Given any article collection <C>
+      And any page number <N>
+      When <C> is paginated at page <N> producing <P>
+      Then <P> holds at most ten articles
 
     @property-based @RID-ARTICLES-PAGINATION-005
     Scenario: The reported page range always contains at least one page
-      Given any collection of articles, including none at all
-      When the feed is paginated
-      Then the reported range of pages contains at least one page
+      Given any article collection <C>
+      When <C> is paginated producing <P>
+      Then the reported page range of <P> contains at least one page

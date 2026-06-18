@@ -1,0 +1,8 @@
+# RID map for the pytest-bdd-property suite (specs/property/). Keys are
+# <classname>::<base test name> (the [param] suffix is stripped at injection).
+specs.property.test_pagination_properties::test_pagination_003:
+- RID-ARTICLES-PAGINATION-003
+specs.property.test_pagination_properties::test_pagination_004:
+- RID-ARTICLES-PAGINATION-004
+specs.property.test_pagination_properties::test_pagination_005:
+- RID-ARTICLES-PAGINATION-005

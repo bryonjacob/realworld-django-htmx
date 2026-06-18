@@ -63,22 +63,33 @@ spec-audit:
 spec-status:
     npx specdrive status
 
-# Run tests emitting JUnit XML, then cross-reference RIDs against the report.
-# Non-blocking on this branch: tests are not yet RID-annotated, so verify
-# reports untraced tests as informational. Turn on strictTraceability in
-# specdrive.yaml once scenarios are wired to tests to make this a hard gate.
+# Cross-reference every spec RID against a test that exercises it (blocking).
+# Runs both suites — the Django suite (manage.py test) and the pytest-bdd
+# property suite — emits a JUnit report from each, injects each test's RID(s)
+# from docs/specs/rid_map.*.yaml, merges the reports, and runs specdrive verify.
 spec-verify:
     rm -rf test-reports
+    mkdir -p test-reports
+    # 0. Merge the per-context rid maps (single source of truth) into one.
+    uv run --with pyyaml python scripts/merge_rid_maps.py test-reports/rid_map.django.yaml docs/specs/rid_map.accounts.yaml docs/specs/rid_map.articles.yaml docs/specs/rid_map.comments.yaml docs/specs/rid_map.helpers.yaml
+    # 1. Django suite -> JUnit, inject RIDs from the merged map
     DEBUG=True DATABASE_URL="file:memdb1?mode=memory&cache=shared" USE_FAST_HASHER=True \
         TEST_OUTPUT_DIR=test-reports \
         uv run python manage.py test apps helpers
-    npx specdrive verify test-reports/junit.xml || echo "⚠ specdrive verify reported untraced tests (non-blocking on this branch)"
+    uv run --with pyyaml python scripts/inject_rids.py test-reports/junit.xml test-reports/rid_map.django.yaml
+    # 2. pytest property suite -> JUnit, inject property RIDs
+    DEBUG=True DATABASE_URL="file:memdb1?mode=memory&cache=shared" USE_FAST_HASHER=True \
+        uv run pytest specs/property/ --junitxml=test-reports/property.xml -q
+    uv run --with pyyaml python scripts/inject_rids.py test-reports/property.xml docs/specs/rid_map.property.yaml
+    # 3. merge both reports and verify full traceability
+    uv run python scripts/merge_junit.py test-reports/merged.xml test-reports/junit.xml test-reports/property.xml
+    npx specdrive verify test-reports/merged.xml
 
-# Run all quality checks (format, lint, typecheck, coverage, spec-audit - fastest first)
-check-all: format lint typecheck coverage spec-audit
+# Run all quality checks (format, lint, typecheck, coverage, spec-audit, spec-verify)
+check-all: format lint typecheck coverage spec-audit spec-verify
     @echo "✅ All checks passed"
 
 # Remove generated files and artifacts
 clean:
     find . -type d -name __pycache__ -exec rm -rf {} +
-    rm -rf .pytest_cache .coverage htmlcov .ruff_cache test-reports
+    rm -rf .pytest_cache .hypothesis .coverage htmlcov .ruff_cache test-reports
