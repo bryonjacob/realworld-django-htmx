@@ -1,0 +1,18 @@
+# specdrive.yaml — Gherkin behavioral contract configuration
+# Docs: https://github.com/bryonjacob/specdrive
+
+# Local spec directories (relative to project root)
+# FFFlow's python convention puts Gherkin specs under docs/specs/.
+localSpecs:
+  - docs/specs
+
+# Uncomment to install shared spec packages:
+# specs:
+#   - name: my-shared-spec
+#     source: github:org/spec-repo@v1.0
+
+# strictTraceability stays OFF on the pre-baked branch: `specdrive audit`
+# (spec-side RID validation) is green and gated, but `specdrive verify`
+# (scenario -> test tracing) is non-blocking until the suite is annotated
+# with RIDs. Wiring tests to scenarios is the workshop exercise.
+# strictTraceability: true
