@@ -1,0 +1,28 @@
+# RID map: comments context tests -> spec scenario RIDs
+# Tests: apps/comments/tests.py
+# Specs: docs/specs/comments/comments.feature, docs/specs/comments/domain/comment.feature
+
+"comments.tests.CommentCreateViewTest::test_anonymous_redirects": [RID-COMMENTS-AUTHZ-001]
+"comments.tests.CommentCreateViewTest::test_empty_body_is_noop": [RID-COMMENTS-CONTENT-001, RID-COMMENTS-CONTENT-002]
+"comments.tests.CommentCreateViewTest::test_create_comment": [RID-COMMENTS-ADD-001, RID-COMMENTS-INLINE-003]
+"comments.tests.CommentCreateViewTest::test_htmx_returns_partial": [RID-COMMENTS-INLINE-001]
+"comments.tests.CommentCreateViewTest::test_unknown_article_404": [RID-COMMENTS-SCOPING-001]
+
+"comments.tests.CommentDeleteViewTest::test_anonymous_redirects": [RID-COMMENTS-AUTHZ-003]
+"comments.tests.CommentDeleteViewTest::test_comment_author_can_delete": [RID-COMMENTS-DELETE-001, RID-COMMENTS-INLINE-004]
+"comments.tests.CommentDeleteViewTest::test_article_author_can_delete": [RID-COMMENTS-DELETE-002]
+"comments.tests.CommentDeleteViewTest::test_stranger_forbidden": [RID-COMMENTS-AUTHZ-002]
+"comments.tests.CommentDeleteViewTest::test_unknown_article_404": [RID-COMMENTS-SCOPING-002]
+"comments.tests.CommentDeleteViewTest::test_unknown_comment_404": [RID-COMMENTS-SCOPING-003]
+"comments.tests.CommentDeleteViewTest::test_htmx_delete_returns_partial": [RID-COMMENTS-INLINE-002]
+
+"comments.tests.ArticleCommentListViewTest::test_article_shows_all_its_comments": [RID-COMMENTS-VIEW-001]
+"comments.tests.ArticleCommentListViewTest::test_article_with_no_comments": [RID-COMMENTS-VIEW-002]
+
+"comments.tests.CommentContentTrimTest::test_surrounding_whitespace_is_stripped": [RID-COMMENTS-CONTENT-003]
+
+"comments.tests.CommentModelTest::test_comment_belongs_to_article_and_author": [RID-COMMENTS-MODEL-001]
+"comments.tests.CommentModelTest::test_comment_has_content_and_timestamps": [RID-COMMENTS-MODEL-002]
+"comments.tests.CommentModelTest::test_comments_ordered_newest_first": [RID-COMMENTS-ORDERING-001]
+"comments.tests.CommentModelTest::test_deleting_article_deletes_its_comments": [RID-COMMENTS-CASCADE-001]
+"comments.tests.CommentModelTest::test_deleting_author_deletes_their_comments": [RID-COMMENTS-CASCADE-002]

@@ -11,8 +11,6 @@ localSpecs:
 #   - name: my-shared-spec
 #     source: github:org/spec-repo@v1.0
 
-# strictTraceability stays OFF on the pre-baked branch: `specdrive audit`
-# (spec-side RID validation) is green and gated, but `specdrive verify`
-# (scenario -> test tracing) is non-blocking until the suite is annotated
-# with RIDs. Wiring tests to scenarios is the workshop exercise.
-# strictTraceability: true
+# Every scenario is traced to a test that exercises it (131/131). Fail the
+# build on any untraced test or uncovered RID.
+strictTraceability: true

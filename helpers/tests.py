@@ -200,3 +200,7 @@ class PaginateTest(TestCase):
         self.assertEqual(result.page, 1)
         self.assertEqual(len(result.items), 10)
         self.assertEqual(result.pages, range(1, 4))
+
+    def test_full_page_holds_exactly_per_page(self):
+        result = paginate(self.qs, self.rf.get("/", {"page": "1"}))
+        self.assertEqual(len(result.items), 10)

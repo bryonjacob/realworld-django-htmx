@@ -4,12 +4,20 @@ from typing import cast
 from unittest.mock import PropertyMock, patch
 
 from articles.models import Article
+from django.contrib.auth import authenticate
 from django.db import IntegrityError
 from django.http import HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
+from hypothesis import given
+from hypothesis import strategies as st
+from hypothesis.extra.django import TestCase as HypothesisTestCase
 
 from accounts.models import User
+
+# Hypothesis strategy for valid, collision-resistant usernames (Django's default
+# UnicodeUsernameValidator allows [\w.@+-]; we keep it to plain ASCII letters/digits).
+usernames = st.text(alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1, max_size=20)
 
 
 def make_user(email="alice@example.com", username="alice", password="pw123456", **extra):
@@ -61,6 +69,51 @@ class UserModelTest(TestCase):
         bob.followers.add(alice)
         self.assertTrue(alice.is_following(bob))
 
+    def test_email_is_username_field_and_username_is_distinct(self):
+        """Email is the authentication identity credential; username is a separate handle."""
+        self.assertEqual(User.USERNAME_FIELD, "email")
+        self.assertNotEqual(User.USERNAME_FIELD, "username")
+        field_names = {f.name for f in User._meta.get_fields()}
+        self.assertIn("email", field_names)
+        self.assertIn("username", field_names)
+
+
+class UserIdentityPropertyTest(HypothesisTestCase):
+    """RID-ACCOUNTS-USER-IDENTITY-003: property — a user is ALWAYS identified by
+    email for authentication, never username.
+
+    For any generated username/email pair, `authenticate()` resolves by email and
+    the username is never accepted as the email credential. Each example runs in its
+    own rolled-back transaction, so the fixed email reused per example is fine.
+    """
+
+    @given(username=usernames)
+    def test_authentication_always_keyed_on_email_not_username(self, username):
+        self.assertEqual(User.USERNAME_FIELD, "email")
+        email = "identity@example.com"
+        User.objects.create_user(email=email, username=username, password="pw123456")
+        self.assertIsNotNone(authenticate(email=email, password="pw123456"))
+        self.assertIsNone(authenticate(email=username, password="pw123456"))
+
+
+class FollowGraphSelfPropertyTest(HypothesisTestCase):
+    """RID-ACCOUNTS-FOLLOW-GRAPH-006: property — no user ever appears in their own
+    followers via the follow action, for any user.
+
+    The self-follow guard lives in `follow_view`, so we exercise it through the
+    client like `FollowViewTest` does, with a Hypothesis-generated username. Each
+    example runs in its own rolled-back transaction.
+    """
+
+    @given(username=usernames)
+    def test_self_follow_never_adds_user_to_own_followers(self, username):
+        user = User.objects.create_user(email="selffollow@example.com", username=username, password="pw123456")
+        self.client.force_login(user)
+        for _ in range(2):
+            resp = self.client.post(reverse("follow", args=[username]))
+            self.assertEqual(resp.status_code, 302)
+        self.assertFalse(user.followers.filter(pk=user.pk).exists())
+
 
 class LoginViewTest(TestCase):
     def test_get_renders_form(self):
@@ -83,6 +136,18 @@ class LoginViewTest(TestCase):
     def test_post_invalid_form_renders_page(self):
         resp = self.client.post(reverse("login"), {"email": "not-an-email", "password": "x"})
         self.assertEqual(resp.status_code, 200)
+
+    def test_post_username_as_credential_does_not_authenticate(self):
+        make_user()
+        resp = self.client.post(reverse("login"), {"email": "alice", "password": "pw123456"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_post_unknown_email_shows_error(self):
+        resp = self.client.post(reverse("login"), {"email": "nobody@example.com", "password": "pw123456"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Invalid email or password.")
+        self.assertNotIn("_auth_user_id", self.client.session)
 
 
 class RegisterViewTest(TestCase):

@@ -1,0 +1,59 @@
+tests.CleanIntegrityErrorTest::test_psycopg2_unique_violation:
+- RID-HELPERS-INTEGRITY-002
+tests.CleanIntegrityErrorTest::test_psycopg2_unique_violation_malformed:
+- RID-HELPERS-INTEGRITY-006
+tests.CleanIntegrityErrorTest::test_returns_none_for_malformed_sqlite_message:
+- RID-HELPERS-INTEGRITY-005
+tests.CleanIntegrityErrorTest::test_returns_none_for_unknown_cause_type:
+- RID-HELPERS-INTEGRITY-004
+tests.CleanIntegrityErrorTest::test_returns_none_when_cause_is_none:
+- RID-HELPERS-INTEGRITY-003
+tests.CleanIntegrityErrorTest::test_sqlite_unique_violation_email:
+- RID-HELPERS-INTEGRITY-001
+tests.CleanIntegrityErrorTest::test_sqlite_unique_violation_username:
+- RID-HELPERS-INTEGRITY-001
+tests.ConduitContextTest::test_anonymous_user:
+- RID-HELPERS-CONTEXT-001
+tests.ConduitContextTest::test_authenticated_user_with_bio_and_image:
+- RID-HELPERS-CONTEXT-002
+tests.ConduitContextTest::test_authenticated_user_with_empty_bio_and_image:
+- RID-HELPERS-CONTEXT-003
+tests.GetOr404Test::test_raises_resource_not_found_when_missing:
+- '@NOSPEC'
+tests.GetOr404Test::test_returns_object_when_found:
+- '@NOSPEC'
+tests.IsHtmxTest::test_false_when_header_is_false:
+- RID-HELPERS-HTMX-003
+tests.IsHtmxTest::test_false_when_header_missing:
+- RID-HELPERS-HTMX-002
+tests.IsHtmxTest::test_true_when_header_set:
+- RID-HELPERS-HTMX-001
+tests.PaginateTest::test_empty_queryset_still_has_one_page:
+- RID-HELPERS-PAGINATE-009
+- RID-HELPERS-PAGINATE-PROP-003
+tests.PaginateTest::test_full_page_holds_exactly_per_page:
+- RID-HELPERS-PAGINATE-006
+tests.PaginateTest::test_happy_path:
+- RID-HELPERS-PAGINATE-001
+- RID-HELPERS-PAGINATE-008
+- RID-HELPERS-PAGINATE-PROP-001
+- RID-HELPERS-PAGINATE-PROP-002
+- RID-HELPERS-PAGINATE-PROP-003
+tests.PaginateTest::test_invalid_page_string_defaults_to_one:
+- RID-HELPERS-PAGINATE-003
+- RID-HELPERS-PAGINATE-005
+- RID-HELPERS-PAGINATE-PROP-001
+tests.PaginateTest::test_missing_page_param_defaults_to_one:
+- RID-HELPERS-PAGINATE-002
+- RID-HELPERS-PAGINATE-008
+- RID-HELPERS-PAGINATE-PROP-003
+tests.PaginateTest::test_page_beyond_range_returns_empty_items:
+- RID-HELPERS-PAGINATE-007
+- RID-HELPERS-PAGINATE-PROP-002
+- RID-HELPERS-PAGINATE-PROP-003
+tests.PaginateTest::test_page_zero_clamped_to_one:
+- RID-HELPERS-PAGINATE-004
+- RID-HELPERS-PAGINATE-005
+- RID-HELPERS-PAGINATE-PROP-001
+tests.ResourceNotFoundTest::test_message_includes_resource_name:
+- '@NOSPEC'

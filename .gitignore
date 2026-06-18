@@ -16,3 +16,4 @@ htmlcov/
 test-reports/
 docs/specs/_specdrive/
 .specdrive/cache/
+.hypothesis/

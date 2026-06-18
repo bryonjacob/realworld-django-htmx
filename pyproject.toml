@@ -34,6 +34,10 @@ dev = [
     "django-types>=0.20.0",
     "hypothesis>=6.100",  # FFFlow L2+: property-based testing
     "unittest-xml-reporting>=4.0.0",  # FFFlow L3: JUnit XML for specdrive verify
+    "pytest>=8.0",  # property-test runner (alongside Django's runner)
+    "pytest-django>=4.12.0",
+    "pytest-bdd>=8.1.0",
+    "pytest-bdd-property>=0.1.0",  # binds @property-based Gherkin scenarios to Hypothesis
 ]
 
 [tool.setuptools]
@@ -88,3 +92,12 @@ ignore = [
 
 [tool.ty.rules]
 unresolved-import = "ignore"  # ty can't follow Django's sys.path manipulation for the apps/ directory
+
+# Property-test runner (FFFlow L3). The property suite runs under pytest +
+# pytest-bdd-property, separate from the main django.test suite. It binds the
+# @property-based Gherkin scenarios to Hypothesis. Scoped to specs/property/ so
+# it never collects the django TestCase suite (which the Django runner owns).
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+pythonpath = ["apps"]
+testpaths = ["specs/property"]

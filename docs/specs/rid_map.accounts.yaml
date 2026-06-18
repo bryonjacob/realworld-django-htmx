@@ -1,0 +1,63 @@
+# RID coverage map — accounts context
+# key: "<classname>::<test_method_name>"  value: [RID(s) exercised]
+# classname = accounts.tests.<TestCaseClass>
+
+# --- UserManagerTest ---
+"accounts.tests.UserManagerTest::test_create_user_sets_password": [RID-ACCOUNTS-USER-PASSWORD-001]
+"accounts.tests.UserManagerTest::test_create_user_without_password_sets_unusable": [RID-ACCOUNTS-USER-PASSWORD-002]
+"accounts.tests.UserManagerTest::test_create_superuser_sets_flags": [RID-ACCOUNTS-SUPERUSER-001]
+"accounts.tests.UserManagerTest::test_create_superuser_rejects_is_staff_false": [RID-ACCOUNTS-SUPERUSER-002]
+"accounts.tests.UserManagerTest::test_create_superuser_rejects_is_superuser_false": [RID-ACCOUNTS-SUPERUSER-002]
+
+# --- UserModelTest ---
+"accounts.tests.UserModelTest::test_get_full_name_and_short_name_return_username": [RID-ACCOUNTS-USER-IDENTITY-002]
+"accounts.tests.UserModelTest::test_is_following_when_not_authenticated_returns_false": [RID-ACCOUNTS-FOLLOW-GRAPH-004]
+"accounts.tests.UserModelTest::test_is_following_true_and_false": [RID-ACCOUNTS-FOLLOW-GRAPH-001, RID-ACCOUNTS-FOLLOW-GRAPH-002, RID-ACCOUNTS-FOLLOW-GRAPH-005]
+"accounts.tests.UserModelTest::test_email_is_username_field_and_username_is_distinct": [RID-ACCOUNTS-USER-IDENTITY-001]
+
+# --- UserIdentityPropertyTest / FollowGraphSelfPropertyTest (Hypothesis properties) ---
+"accounts.tests.UserIdentityPropertyTest::test_authentication_always_keyed_on_email_not_username": [RID-ACCOUNTS-USER-IDENTITY-003]
+"accounts.tests.FollowGraphSelfPropertyTest::test_self_follow_never_adds_user_to_own_followers": [RID-ACCOUNTS-FOLLOW-GRAPH-006]
+
+# --- LoginViewTest ---
+"accounts.tests.LoginViewTest::test_get_renders_form": ["@NOSPEC"]
+"accounts.tests.LoginViewTest::test_post_valid_credentials_logs_in_and_redirects": [RID-ACCOUNTS-LOGIN-001]
+"accounts.tests.LoginViewTest::test_post_invalid_credentials_shows_error": [RID-ACCOUNTS-LOGIN-003]
+"accounts.tests.LoginViewTest::test_post_invalid_form_renders_page": [RID-ACCOUNTS-LOGIN-005]
+"accounts.tests.LoginViewTest::test_post_username_as_credential_does_not_authenticate": [RID-ACCOUNTS-LOGIN-002]
+"accounts.tests.LoginViewTest::test_post_unknown_email_shows_error": [RID-ACCOUNTS-LOGIN-004]
+
+# --- RegisterViewTest ---
+"accounts.tests.RegisterViewTest::test_get_renders_form": ["@NOSPEC"]
+"accounts.tests.RegisterViewTest::test_post_valid_creates_user_and_logs_in": [RID-ACCOUNTS-REGISTER-001]
+"accounts.tests.RegisterViewTest::test_post_invalid_form_rerenders": [RID-ACCOUNTS-REGISTER-002]
+"accounts.tests.RegisterViewTest::test_post_duplicate_email_shows_error": [RID-ACCOUNTS-REGISTER-CONFLICT-001]
+"accounts.tests.RegisterViewTest::test_post_duplicate_username_shows_error": [RID-ACCOUNTS-REGISTER-CONFLICT-002]
+"accounts.tests.RegisterViewTest::test_post_integrity_error_unknown_field_generic": [RID-ACCOUNTS-REGISTER-CONFLICT-003]
+
+# --- SettingsViewTest ---
+"accounts.tests.SettingsViewTest::test_anonymous_redirects_to_login": [RID-ACCOUNTS-SETTINGS-001]
+"accounts.tests.SettingsViewTest::test_get_authenticated_renders_form": [RID-ACCOUNTS-SETTINGS-002]
+"accounts.tests.SettingsViewTest::test_post_updates_profile_without_password": [RID-ACCOUNTS-SETTINGS-003]
+"accounts.tests.SettingsViewTest::test_post_updates_profile_with_password": [RID-ACCOUNTS-SETTINGS-004]
+"accounts.tests.SettingsViewTest::test_post_invalid_form_rerenders": [RID-ACCOUNTS-SETTINGS-005]
+
+# --- LogoutViewTest ---
+"accounts.tests.LogoutViewTest::test_post_logs_out": [RID-ACCOUNTS-LOGOUT-001]
+"accounts.tests.LogoutViewTest::test_get_not_allowed": [RID-ACCOUNTS-LOGOUT-002]
+
+# --- ProfileViewTest ---
+"accounts.tests.ProfileViewTest::test_unknown_user_returns_404": [RID-ACCOUNTS-PROFILE-003]
+"accounts.tests.ProfileViewTest::test_profile_shows_authored_articles": [RID-ACCOUNTS-PROFILE-001]
+"accounts.tests.ProfileViewTest::test_profile_favorites_tab": [RID-ACCOUNTS-PROFILE-002]
+"accounts.tests.ProfileViewTest::test_profile_pagination_valid_page": ["@NOSPEC"]
+"accounts.tests.ProfileViewTest::test_profile_pagination_invalid_page_defaults_to_one": ["@NOSPEC"]
+"accounts.tests.ProfileViewTest::test_profile_self_view_sets_is_self": [RID-ACCOUNTS-PROFILE-VIEWER-001]
+"accounts.tests.ProfileViewTest::test_profile_authenticated_following_flag": [RID-ACCOUNTS-PROFILE-VIEWER-002]
+
+# --- FollowViewTest ---
+"accounts.tests.FollowViewTest::test_anonymous_redirects": [RID-ACCOUNTS-FOLLOW-001]
+"accounts.tests.FollowViewTest::test_follow_then_unfollow": [RID-ACCOUNTS-FOLLOW-003, RID-ACCOUNTS-FOLLOW-RESPONSE-002]
+"accounts.tests.FollowViewTest::test_follow_self_is_noop": [RID-ACCOUNTS-FOLLOW-GRAPH-003]
+"accounts.tests.FollowViewTest::test_follow_htmx_returns_partial": [RID-ACCOUNTS-FOLLOW-RESPONSE-001]
+"accounts.tests.FollowViewTest::test_follow_unknown_user_404": [RID-ACCOUNTS-FOLLOW-002]

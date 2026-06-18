@@ -1,0 +1,77 @@
+# RID traceability map — articles context
+# Maps each unit test method to the spec scenario RID(s) whose behavior it exercises.
+# Key: "articles.tests.<ClassName>::<test_method_name>"  Value: list of RIDs (no leading @).
+
+# --- ArticleModelTest ---
+"articles.tests.ArticleModelTest::test_save_generates_slug_on_create": [RID-ARTICLES-SLUG-001]
+"articles.tests.ArticleModelTest::test_save_does_not_regenerate_slug_on_update": [RID-ARTICLES-SLUG-002, RID-ARTICLES-SLUG-003]
+"articles.tests.ArticleModelTest::test_with_favorites_anonymous_sets_is_favorite_false": [RID-ARTICLES-FAVORITE-STANDING-001]
+"articles.tests.ArticleModelTest::test_with_favorites_authenticated_reflects_favorites": [RID-ARTICLES-FAVORITE-STANDING-002]
+
+# --- SlugStabilityPropertyTest (Hypothesis property) ---
+"articles.tests.SlugStabilityPropertyTest::test_slug_never_changes_on_edit": [RID-ARTICLES-SLUG-003]
+
+# --- MarkdownFilterTest ---
+"articles.tests.MarkdownFilterTest::test_renders_markdown_and_sanitizes": [RID-ARTICLES-MARKDOWN-001]
+"articles.tests.MarkdownFilterTest::test_strips_unsafe_html": [RID-ARTICLES-MARKDOWN-002]
+
+# --- HomeViewTest ---
+"articles.tests.HomeViewTest::test_anonymous_home_shows_all": [RID-ARTICLES-FEED-001]
+"articles.tests.HomeViewTest::test_tag_query_filters": [RID-ARTICLES-TAG-001]
+"articles.tests.HomeViewTest::test_tag_url_path_filters": [RID-ARTICLES-TAG-002]
+"articles.tests.HomeViewTest::test_following_feed_anonymous_redirects_to_login": [RID-ARTICLES-FEED-FOLLOWING-002]
+"articles.tests.HomeViewTest::test_following_feed_authenticated": [RID-ARTICLES-FEED-FOLLOWING-001]
+"articles.tests.HomeViewTest::test_invalid_page_defaults_to_one": [RID-ARTICLES-PAGINATION-002]
+"articles.tests.HomeViewTest::test_htmx_request_returns_partial": [RID-ARTICLES-FEED-FRAGMENT-002]
+"articles.tests.HomeViewTest::test_global_feed_orders_newest_first": [RID-ARTICLES-FEED-002]
+"articles.tests.HomeViewTest::test_full_page_load_renders_full_template": [RID-ARTICLES-FEED-FRAGMENT-001]
+"articles.tests.HomeViewTest::test_feed_shows_at_most_ten_articles_per_page": [RID-ARTICLES-PAGINATION-001]
+"articles.tests.HomeViewTest::test_feed_offers_all_tags": [RID-ARTICLES-TAG-003]
+"articles.tests.HomeViewTest::test_new_tag_available_after_article_saved": [RID-ARTICLES-TAG-004]
+
+# --- ArticleDetailViewTest ---
+# No articles spec scenario covers the article-detail surface (unknown-slug 404, plain render,
+# or the author-following flag on the detail page). Detail rendering is unspec'd in this context.
+"articles.tests.ArticleDetailViewTest::test_unknown_slug_returns_404": ["@NOSPEC"]
+"articles.tests.ArticleDetailViewTest::test_detail_renders": ["@NOSPEC"]
+"articles.tests.ArticleDetailViewTest::test_detail_authenticated_shows_following_flag": ["@NOSPEC"]
+
+# --- ArticleCreateViewTest ---
+"articles.tests.ArticleCreateViewTest::test_anonymous_redirects": [RID-ARTICLES-EDITOR-ACCESS-001]
+"articles.tests.ArticleCreateViewTest::test_get_renders_form": [RID-ARTICLES-EDITOR-ACCESS-002]
+"articles.tests.ArticleCreateViewTest::test_post_creates_article_with_tags": [RID-ARTICLES-CREATE-001, RID-ARTICLES-CREATE-002, RID-ARTICLES-CONTENT-001]
+"articles.tests.ArticleCreateViewTest::test_post_creates_article_without_tags": [RID-ARTICLES-CREATE-003]
+"articles.tests.ArticleCreateViewTest::test_post_invalid_form_rerenders": [RID-ARTICLES-CREATE-005]
+"articles.tests.ArticleCreateViewTest::test_post_redirects_to_new_article_detail": [RID-ARTICLES-CREATE-004]
+
+# --- ArticleEditViewTest ---
+"articles.tests.ArticleEditViewTest::test_non_author_gets_404": [RID-ARTICLES-EDIT-001]
+"articles.tests.ArticleEditViewTest::test_get_prefills_form": [RID-ARTICLES-EDIT-002]
+"articles.tests.ArticleEditViewTest::test_post_updates_article": [RID-ARTICLES-EDIT-003]
+"articles.tests.ArticleEditViewTest::test_post_invalid_form_rerenders": [RID-ARTICLES-EDIT-004]
+
+# --- ArticleDeleteViewTest ---
+"articles.tests.ArticleDeleteViewTest::test_non_author_gets_404": [RID-ARTICLES-DELETE-001]
+"articles.tests.ArticleDeleteViewTest::test_author_can_delete": [RID-ARTICLES-DELETE-002]
+
+# --- ArticleFavoriteViewTest ---
+"articles.tests.ArticleFavoriteViewTest::test_anonymous_redirects": [RID-ARTICLES-FAVORITE-001]
+"articles.tests.ArticleFavoriteViewTest::test_toggle_favorite_on_and_off": [RID-ARTICLES-FAVORITE-002, RID-ARTICLES-FAVORITE-003]
+"articles.tests.ArticleFavoriteViewTest::test_htmx_returns_partial": [RID-ARTICLES-FAVORITE-004]
+"articles.tests.ArticleFavoriteViewTest::test_unknown_slug_404": [RID-ARTICLES-FAVORITE-005]
+
+# --- ProfileViewTest ---
+"articles.tests.ProfileViewTest::test_articles_tab_lists_users_own_articles_newest_first": [RID-ARTICLES-PROFILE-001]
+"articles.tests.ProfileViewTest::test_favorites_tab_lists_favorited_articles_newest_first": [RID-ARTICLES-PROFILE-002]
+"articles.tests.ProfileViewTest::test_unknown_username_returns_404": [RID-ARTICLES-PROFILE-003]
+
+# --- SeedDataCommandTest ---
+# Management command for dev/e2e seeding — not described by any articles spec scenario.
+"articles.tests.SeedDataCommandTest::test_seed_data_creates_users_and_articles": ["@NOSPEC"]
+"articles.tests.SeedDataCommandTest::test_seed_data_is_idempotent": ["@NOSPEC"]
+
+# --- CreateUserCommandTest ---
+# Management command for operator user creation — not an articles spec behavior.
+"articles.tests.CreateUserCommandTest::test_create_user_success": ["@NOSPEC"]
+"articles.tests.CreateUserCommandTest::test_create_user_already_exists": ["@NOSPEC"]
+"articles.tests.CreateUserCommandTest::test_create_user_missing_args": ["@NOSPEC"]

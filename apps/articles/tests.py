@@ -9,6 +9,9 @@ from django.core.management import call_command
 from django.http import HttpResponseRedirect
 from django.test import TestCase
 from django.urls import reverse
+from hypothesis import given
+from hypothesis import strategies as st
+from hypothesis.extra.django import TestCase as HypothesisTestCase
 
 from articles.models import Article
 from articles.templatetags.markdown_filter import render_markdown
@@ -59,6 +62,25 @@ class ArticleModelTest(TestCase):
         art = qs.get(pk=a.pk)
         self.assertTrue(art.is_favorite)
         self.assertEqual(art.num_favorites, 1)
+
+
+class SlugStabilityPropertyTest(HypothesisTestCase):
+    """RID-ARTICLES-SLUG-003: property — any title edit leaves the slug fixed.
+
+    `Article.save()` only regenerates the slug when `self.pk is None`, so once an
+    article is created its URL is stable no matter what the title is later set to.
+    Each Hypothesis example runs in its own rolled-back transaction, so creating a
+    fresh author + article per example is collision-free.
+    """
+
+    @given(new_title=st.text(min_size=1, max_size=140))
+    def test_slug_never_changes_on_edit(self, new_title):
+        author = User.objects.create_user(email="slug@example.com", username="sluggy", password="pw123456")
+        article = Article.objects.create(author=author, title="Original Fixed Title", summary="s", content="c")
+        original_slug = article.slug
+        article.title = new_title
+        article.save()
+        self.assertEqual(article.slug, original_slug)
 
 
 class MarkdownFilterTest(TestCase):
@@ -121,6 +143,41 @@ class HomeViewTest(TestCase):
         resp = self.client.get(reverse("home"), HTTP_HX_REQUEST="true")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("partials/feed_content.html", [t.name for t in resp.templates if t.name])
+
+    def test_global_feed_orders_newest_first(self):
+        resp = self.client.get(reverse("home"))
+        self.assertEqual(resp.status_code, 200)
+        articles = list(resp.context["articles"])
+        self.assertEqual([a.pk for a in articles], [self.art2.pk, self.art1.pk])
+
+    def test_full_page_load_renders_full_template(self):
+        resp = self.client.get(reverse("home"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("articles/home.html", [t.name for t in resp.templates if t.name])
+
+    def test_feed_shows_at_most_ten_articles_per_page(self):
+        for i in range(11):
+            make_article(self.alice, title=f"Bulk Post {i}")
+        resp = self.client.get(reverse("home"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.context["articles"]), 10)
+
+    def test_feed_offers_all_tags(self):
+        resp = self.client.get(reverse("home"))
+        self.assertEqual(resp.status_code, 200)
+        tag_names = sorted(t.name for t in resp.context["tags"])
+        self.assertEqual(tag_names, ["django", "python"])
+
+    def test_new_tag_available_after_article_saved(self):
+        # Prime the cache with the current tag set.
+        self.client.get(reverse("home"))
+        self.client.force_login(self.alice)
+        self.client.post(
+            reverse("article_create"),
+            {"title": "Tagged Fresh", "description": "d", "body": "b", "tags": "rust"},
+        )
+        resp = self.client.get(reverse("home"))
+        self.assertIn("rust", [t.name for t in resp.context["tags"]])
 
 
 class ArticleDetailViewTest(TestCase):
@@ -185,6 +242,15 @@ class ArticleCreateViewTest(TestCase):
         self.client.force_login(self.alice)
         resp = self.client.post(reverse("article_create"), {"title": "", "description": "", "body": "", "tags": ""})
         self.assertEqual(resp.status_code, 200)
+
+    def test_post_redirects_to_new_article_detail(self):
+        self.client.force_login(self.alice)
+        resp = self.client.post(
+            reverse("article_create"),
+            {"title": "Land Here", "description": "d", "body": "b", "tags": ""},
+        )
+        art = Article.objects.get(title="Land Here")
+        self.assertRedirects(resp, reverse("article_detail", args=[art.slug]))
 
 
 class ArticleEditViewTest(TestCase):
@@ -272,6 +338,38 @@ class ArticleFavoriteViewTest(TestCase):
     def test_unknown_slug_404(self):
         self.client.force_login(self.bob)
         resp = self.client.post(reverse("article_favorite", args=["ghost"]))
+        self.assertEqual(resp.status_code, 404)
+
+
+class ProfileViewTest(TestCase):
+    def setUp(self):
+        self.alice = make_user()
+        self.bob = make_user(email="bob@x.com", username="bob")
+
+    def test_articles_tab_lists_users_own_articles_newest_first(self):
+        first = make_article(self.alice, title="Alice First")
+        second = make_article(self.alice, title="Alice Second")
+        make_article(self.bob, title="Bob Post")
+        resp = self.client.get(reverse("profile", args=["alice"]))
+        self.assertEqual(resp.status_code, 200)
+        articles = list(resp.context["articles"])
+        self.assertEqual([a.pk for a in articles], [second.pk, first.pk])
+        self.assertEqual(resp.context["tab"], "my")
+
+    def test_favorites_tab_lists_favorited_articles_newest_first(self):
+        first = make_article(self.bob, title="Fav First")
+        second = make_article(self.bob, title="Fav Second")
+        make_article(self.bob, title="Unfavorited")
+        first.favorites.add(self.alice)
+        second.favorites.add(self.alice)
+        resp = self.client.get(reverse("profile_favorites", args=["alice"]))
+        self.assertEqual(resp.status_code, 200)
+        articles = list(resp.context["articles"])
+        self.assertEqual([a.pk for a in articles], [second.pk, first.pk])
+        self.assertEqual(resp.context["tab"], "favorites")
+
+    def test_unknown_username_returns_404(self):
+        resp = self.client.get(reverse("profile", args=["ghost"]))
         self.assertEqual(resp.status_code, 404)
 
 
