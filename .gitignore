@@ -11,3 +11,8 @@ playwright/playwright-report/
 htmlcov/
 .ruff_cache/
 .pytest_cache/
+
+# FFFlow L3 / specdrive
+test-reports/
+docs/specs/_specdrive/
+.specdrive/cache/

@@ -7,6 +7,7 @@ default:
 # Install dependencies and setup development environment
 dev-install:
     make sync
+    npm install --silent  # node tooling: specdrive (L3 spec audit), Playwright
 
 # Format code (auto-fix)
 format:
@@ -54,11 +55,30 @@ hooks-install:
         exit 1; \
     fi
 
-# Run all quality checks (format, lint, typecheck, coverage - fastest first)
-check-all: format lint typecheck coverage
+# Validate spec RIDs: format, uniqueness, context-match (FFFlow L3, blocking)
+spec-audit:
+    npx specdrive audit
+
+# Show declared specs and RID counts
+spec-status:
+    npx specdrive status
+
+# Run tests emitting JUnit XML, then cross-reference RIDs against the report.
+# Non-blocking on this branch: tests are not yet RID-annotated, so verify
+# reports untraced tests as informational. Turn on strictTraceability in
+# specdrive.yaml once scenarios are wired to tests to make this a hard gate.
+spec-verify:
+    rm -rf test-reports
+    DEBUG=True DATABASE_URL="file:memdb1?mode=memory&cache=shared" USE_FAST_HASHER=True \
+        TEST_OUTPUT_DIR=test-reports \
+        uv run python manage.py test apps helpers
+    npx specdrive verify test-reports/junit.xml || echo "⚠ specdrive verify reported untraced tests (non-blocking on this branch)"
+
+# Run all quality checks (format, lint, typecheck, coverage, spec-audit - fastest first)
+check-all: format lint typecheck coverage spec-audit
     @echo "✅ All checks passed"
 
 # Remove generated files and artifacts
 clean:
     find . -type d -name __pycache__ -exec rm -rf {} +
-    rm -rf .pytest_cache .coverage htmlcov .ruff_cache
+    rm -rf .pytest_cache .coverage htmlcov .ruff_cache test-reports

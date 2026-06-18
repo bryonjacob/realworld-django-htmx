@@ -121,6 +121,17 @@ if USE_FAST_HASHER and not DEBUG:
 if USE_FAST_HASHER:
     PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
+# FFFlow L3 / specdrive: when TEST_OUTPUT_DIR is set (by `just spec-verify`),
+# run tests through the xmlrunner test runner so a JUnit XML report is emitted
+# for `specdrive verify` to cross-reference against spec RIDs. Harness-only;
+# the normal test runner is unaffected.
+TEST_OUTPUT_DIR = getenv("TEST_OUTPUT_DIR")
+if TEST_OUTPUT_DIR:  # pragma: no cover
+    TEST_RUNNER = "xmlrunner.extra.djangotestrunner.XMLTestRunner"
+    # Emit one combined JUnit XML file (not one-per-class) so `specdrive verify`
+    # can consume a single report.
+    TEST_OUTPUT_FILE_NAME = "junit.xml"
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/

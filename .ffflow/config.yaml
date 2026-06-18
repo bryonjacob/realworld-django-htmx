@@ -1,5 +1,5 @@
 version: 1
-level: L2
+level: L3
 stack: python
 capture: github-issues
 spec_location: docs/specs
@@ -8,8 +8,13 @@ spec_location: docs/specs
 test_location: apps
 audit_state_file: .ffflow/audit.yaml
 
+# NOTE: the python stack cartridge declares max_level: L2 on the assumption that
+# specdrive is npm-only and therefore Python-incompatible. That is a packaging
+# assumption, not a capability limit: specdrive is a language-agnostic CLI
+# (github:bryonjacob/specdrive) that consumes JUnit XML, so it works fine against
+# a Django suite. This project runs at L3 deliberately, overriding that cap.
 features:
   property_based_testing: true
-  mutation_testing: false
-  rid_traceability: false
-  four_quality_gates: false
+  mutation_testing: true
+  rid_traceability: true
+  four_quality_gates: true
