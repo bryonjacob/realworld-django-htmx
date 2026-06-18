@@ -45,6 +45,15 @@ complexity:
 loc N="20":
     cloc apps helpers config --by-file --quiet | head -n $(({{N}} + 5))
 
+# Install FFFlow git hooks (pre-commit framework, delegates to justfile recipes)
+hooks-install:
+    @if command -v pre-commit >/dev/null; then \
+        pre-commit install --hook-type pre-commit --hook-type pre-push; \
+    else \
+        echo "pre-commit not found — install it (uv tool install pre-commit) then re-run."; \
+        exit 1; \
+    fi
+
 # Run all quality checks (format, lint, typecheck, coverage - fastest first)
 check-all: format lint typecheck coverage
     @echo "✅ All checks passed"

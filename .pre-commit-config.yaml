@@ -1,0 +1,30 @@
+# FFFlow git hooks — delegate to justfile recipes (DRY).
+# Install once per clone:  pre-commit install --hook-type pre-commit --hook-type pre-push
+# Escape hatch:            git commit/push --no-verify
+repos:
+  - repo: local
+    hooks:
+      - id: ffflow-format
+        name: just format
+        entry: just format
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: ffflow-lint
+        name: just lint
+        entry: just lint
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: ffflow-typecheck
+        name: just typecheck
+        entry: just typecheck
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: ffflow-check-all
+        name: just check-all
+        entry: just check-all
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
