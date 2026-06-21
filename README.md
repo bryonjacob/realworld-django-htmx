@@ -117,6 +117,19 @@ Legacy `make lint` / `make lint-check` / `make type-check` / `make clean` still 
 
 The codebase has a `CLAUDE.md` file in every meaningful module (`apps/`, each of the three apps, `config/`, `helpers/`, `templates/`, `playwright/`). Start there when navigating an unfamiliar area.
 
+### FFFlow development workflow (optional)
+
+This repository is set up to use [FFFlow](https://github.com/bryonjacob/ffflow-plugin),
+a Claude Code plugin for spec-driven development (plan → work → audit). The
+plugin's commands (`/fff:*`) are declared in `.claude/settings.json`, so when you
+open this folder in Claude Code and trust it, you'll be prompted to install the
+`fff` plugin automatically.
+
+The plugin is **only needed to invoke the `/fff:*` workflow commands**. Running
+the app and the quality gates (`just check-all`) does **not** require it — the
+FFFlow artifacts it produced (Gherkin specs under `docs/specs/`, the `justfile`
+gates, `specdrive.yaml`, the test suites) are plain files committed to the repo.
+
 ## License
 
 - Original code by [Sean-Miningah](https://github.com/Sean-Miningah/) under [MIT License](https://github.com/Sean-Miningah/realWorld-DjangoRestFramework/blob/master/LICENSE)

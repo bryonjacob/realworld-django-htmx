@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "ffflow": {
+      "source": {
+        "source": "github",
+        "repo": "bryonjacob/ffflow-plugin"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "fff@ffflow": true
+  }
+}
