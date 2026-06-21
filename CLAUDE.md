@@ -13,7 +13,7 @@ Run `just check-all` (lint + type-check + unit tests + 100% coverage gate). Opti
 
 ## Testing
 
-When asked to "run the tests", run both `just check-all` and `just integration-test`. Unit tests live per-app (`apps/*/tests.py`) plus `helpers/tests.py`, covering views, models, forms, and helpers via `django.test.Client`. E2e tests are the shared RealWorld spec (git submodule at `realworld/specs/e2e/`) driven by Playwright.
+When asked to "run the tests", run both `just check-all` and `just integration-test`. Unit tests live per-app (`apps/*/tests.py`) plus `helpers/tests.py`, covering views, models, forms, and helpers via `django.test.Client`. E2e tests are the shared RealWorld spec (vendored at `realworld/specs/e2e/`) driven by Playwright.
 
 - **Unit tests**: fast, ~0.5s, in-memory SQLite + MD5 hasher, 100% coverage.
 - **E2e tests**: slower, ~2.5min, real browser against a spawned Django dev server.

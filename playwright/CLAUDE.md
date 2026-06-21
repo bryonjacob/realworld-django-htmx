@@ -4,7 +4,7 @@ Playwright e2e test harness. Runs the shared RealWorld spec against this impleme
 
 ## Files
 
-- **playwright.config.ts** — the whole config. Points at `realworld/specs/e2e` (git submodule) for test files, auto-starts a Django dev server via the `webServer` block, runs in a single worker (no parallelism).
+- **playwright.config.ts** — the whole config. Points at `realworld/specs/e2e` (vendored upstream spec) for test files, auto-starts a Django dev server via the `webServer` block, runs in a single worker (no parallelism).
 
 ## How it runs
 
@@ -17,7 +17,7 @@ Playwright e2e test harness. Runs the shared RealWorld spec against this impleme
 
 The RealWorld e2e suite is shared across implementations, including API-based ones. ~65 tests are API-only (they hit `/api/user`, `/api/articles`, etc., which this implementation does not have). They gate themselves with `test.skip(!API_MODE, ...)` at the top of each test, so passing `API_MODE=false` (the default here) causes them to self-skip rather than fail.
 
-**Expected baseline**: 74 passed, 65 skipped, 0 failed. Deviations from this are the test signal — if the passed count drops, a regression was introduced; if the failed count goes up, investigate first (the spec sometimes drifts with submodule updates).
+**Expected baseline**: 74 passed, 65 skipped, 0 failed. Deviations from this are the test signal — if the passed count drops, a regression was introduced; if the failed count goes up, investigate first (the spec sometimes drifts when the vendored upstream copy is refreshed).
 
 ## Why npx and not bun
 
@@ -31,4 +31,4 @@ The original `make e2e` target uses `bun` per upstream, but we don't ship bun in
 
 ## Never modify test files from here
 
-The specs live in `realworld/specs/e2e/*.spec.ts` (git submodule). That's upstream content. If a test is wrong for this implementation, fix it upstream or filter it via `API_MODE` — don't edit the submodule directly.
+The specs live in `realworld/specs/e2e/*.spec.ts` (vendored upstream content). That's upstream content. If a test is wrong for this implementation, fix it upstream or filter it via `API_MODE` — don't edit the vendored copy directly.
