@@ -1,3 +1,43 @@
+# AAIA Summer Intensive 2026 Workshop — Medium App Clone
+
+This repository is the shared starting point for the AAIA Summer Intensive 2026
+development workshop. It is a working **Medium clone ("Conduit")** built with
+**Django + HTMX** — a real application with real complexity: authentication,
+articles, comments, tags, favorites, following, and feeds.
+
+It is cloned from the upstream open-source project
+[c4ffein/realworld-django-htmx](https://github.com/c4ffein/realworld-django-htmx)
+and prepared so that everyone in the workshop builds from the **same
+application**. The upstream project pulls its CSS, icons, and end-to-end test
+suite from a Git submodule; we have **inlined all of that directly into the
+repository** — so there is no submodule step. You clone, install, and run.
+
+## Getting started
+
+The only prerequisite is [uv](https://docs.astral.sh/uv/) (which manages Python
+and all dependencies for you).
+
+```shell
+# 1. Clone the repository
+git clone <your-assigned-repo-url>
+cd <repo-directory>
+
+# 2. Install dependencies (Python + packages)
+uv sync --extra dev
+
+# 3. Set up the database
+DEBUG=True uv run python manage.py migrate
+
+# 4. Start the app
+DEBUG=True uv run python manage.py runserver 0.0.0.0:8000
+```
+
+Then open **http://localhost:8000** — you should see the Conduit home page,
+fully styled. Register an account from the **Sign up** link and start using the
+app.
+
+---
+
 # ![RealWorld Example App](logo.png)
 
 > ### Django + HTMX codebase containing real world examples (CRUD, auth, advanced patterns, etc) that adheres to the [RealWorld](https://github.com/realworld-apps/realworld) spec.
@@ -20,32 +60,18 @@ For more RealWorld implementations, see [codebase.show](https://codebase.show/pr
 
 ## Usage
 
-1. Clone with submodules and install dependencies
+For local development, see [**Getting started**](#getting-started) above. Static
+assets (CSS, icons) and the E2E test suite are inlined directly into this
+repository — there is no submodule to initialize.
 
-This project uses a Git submodule for static assets (CSS, icons, etc.) and the E2E test suite. You **must** initialize submodules when cloning:
+The project also ships `make` targets that wrap the same commands (`make sync`,
+`DEBUG=True make migrate`, `make run-debug`).
 
-```shell
-git clone --recurse-submodules <repo-url>
-cd realworld-django-htmx
-make sync
-```
-
-If you already cloned without `--recurse-submodules`, initialize them manually:
+For PostgreSQL instead of the default development SQLite:
 
 ```shell
-git submodule update --init --recursive
-```
-
-2. Apply migrations and run
-
-```shell
-# SQLite (development)
-DEBUG=True make migrate
-make run-debug
-
-# PostgreSQL (production)
-DATABASE_URL=postgresql://user:password@host:port/dbname make migrate
-DATABASE_URL=postgresql://user:password@host:port/dbname ALLOWED_HOSTS=* make run
+DATABASE_URL=postgresql://user:password@host:port/dbname uv run python manage.py migrate
+DATABASE_URL=postgresql://user:password@host:port/dbname ALLOWED_HOSTS=* uv run python manage.py runserver 0.0.0.0:8000
 ```
 
 ### Using Docker

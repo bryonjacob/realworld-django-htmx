@@ -8,7 +8,6 @@ MEMDB := "file:memdb1?mode=memory&cache=shared"
 
 help:
 	@echo "Available commands:"
-	@echo "  submodule"
 	@echo "  sync"
 	@echo "  run-debug"
 	@echo "  run"
@@ -21,9 +20,6 @@ help:
 	@echo "  verify"
 	@echo "  e2e             - run e2e tests (auto-starts in-memory SQLite server)"
 	@echo "  clean           - remove all __pycache__ directories"
-
-submodule:
-	git submodule init; git submodule update
 
 sync:
 	uv sync --extra dev
