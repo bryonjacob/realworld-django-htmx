@@ -36,7 +36,7 @@ dev = [
     "unittest-xml-reporting>=4.0.0",  # FFFlow L3: JUnit XML for specdrive verify
     "pytest>=8.0",  # property-test runner (alongside Django's runner)
     "pytest-django>=4.12.0",
-    "pytest-bdd>=8.1.0",
+    "pytest-bdd>=8.1,<9",  # 9.x changed @scenario import-time behavior (CONFIG_STACK); pin to 8.x
     "pytest-bdd-property>=0.1.0",  # binds @property-based Gherkin scenarios to Hypothesis
 ]
 
